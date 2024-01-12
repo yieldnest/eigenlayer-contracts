@@ -37,6 +37,8 @@ interface IDelegationManager is ISignatureUtils {
          * then they are only allowed to either increase this value or keep it the same.
          */
         uint32 stakerOptOutWindowBlocks;
+        // minimum UTC timestamp until which all new delegations to the operator are banned
+        uint64 newDelegationsBannedUntil;
     }
 
     /**

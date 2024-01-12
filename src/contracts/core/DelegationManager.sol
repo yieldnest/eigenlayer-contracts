@@ -117,7 +117,8 @@ contract DelegationManager is Initializable, OwnableUpgradeable, Pausable, Deleg
      * @param newOperatorDetails is the updated `OperatorDetails` for the operator, to replace their current OperatorDetails`.
      *
      * @dev The caller must have previously registered as an operator in EigenLayer.
-     * @dev This function will revert if the caller attempts to set their `earningsReceiver` to address(0).
+     * @dev This function will revert if the operator attempts to set their `earningsReceiver` to address(0), or
+     * to decrease their `newDelegationsBannedUntil` value.
      */
     function modifyOperatorDetails(OperatorDetails calldata newOperatorDetails) external {
         require(isOperator(msg.sender), "DelegationManager.modifyOperatorDetails: caller must be an operator");
@@ -508,7 +509,8 @@ contract DelegationManager is Initializable, OwnableUpgradeable, Pausable, Deleg
      * @param operator The account registered as an operator updating their operatorDetails
      * @param newOperatorDetails The new parameters for the operator
      *
-     * @dev This function will revert if the operator attempts to set their `earningsReceiver` to address(0).
+     * @dev This function will revert if the operator attempts to set their `earningsReceiver` to address(0), or
+     * to decrease their `newDelegationsBannedUntil` value.
      */
     function _setOperatorDetails(address operator, OperatorDetails calldata newOperatorDetails) internal {
         require(
@@ -523,6 +525,11 @@ contract DelegationManager is Initializable, OwnableUpgradeable, Pausable, Deleg
             newOperatorDetails.stakerOptOutWindowBlocks >= _operatorDetails[operator].stakerOptOutWindowBlocks,
             "DelegationManager._setOperatorDetails: stakerOptOutWindowBlocks cannot be decreased"
         );
+        require(
+            newOperatorDetails.newDelegationsBannedUntil >= _operatorDetails[operator].newDelegationsBannedUntil,
+            "DelegationManager._setOperatorDetails: can only extend delegation ban"
+        );
+
         _operatorDetails[operator] = newOperatorDetails;
         emit OperatorDetailsModified(msg.sender, newOperatorDetails);
     }
@@ -537,6 +544,8 @@ contract DelegationManager is Initializable, OwnableUpgradeable, Pausable, Deleg
      *          1) the `staker` is not already delegated to an operator
      *          2) the `operator` has indeed registered as an operator in EigenLayer
      *          3) if applicable, that the approver signature is valid and non-expired
+     *          4) if the `staker` is not the operator,
+     *             then checks that the current time exceeds the operator's `newDelegationsBannedUntil` time
      */
     function _delegate(
         address staker,
