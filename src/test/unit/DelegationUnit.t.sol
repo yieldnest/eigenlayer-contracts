@@ -274,7 +274,8 @@ contract DelegationManagerUnitTests is EigenLayerUnitTestSetup, IDelegationManag
         IDelegationManager.OperatorDetails memory operatorDetails = IDelegationManager.OperatorDetails({
             earningsReceiver: operator,
             delegationApprover: address(0),
-            stakerOptOutWindowBlocks: 0
+            stakerOptOutWindowBlocks: 0,
+            newDelegationsBannedUntil: 0
         });
         _registerOperator(operator, operatorDetails, emptyStringForMetadataURI);
     }
@@ -283,7 +284,8 @@ contract DelegationManagerUnitTests is EigenLayerUnitTestSetup, IDelegationManag
         IDelegationManager.OperatorDetails memory operatorDetails = IDelegationManager.OperatorDetails({
             earningsReceiver: operator,
             delegationApprover: cheats.addr(delegationSignerPrivateKey),
-            stakerOptOutWindowBlocks: 0
+            stakerOptOutWindowBlocks: 0,
+            newDelegationsBannedUntil: 0
         });
         _registerOperator(operator, operatorDetails, emptyStringForMetadataURI);
     }
@@ -299,7 +301,8 @@ contract DelegationManagerUnitTests is EigenLayerUnitTestSetup, IDelegationManag
         IDelegationManager.OperatorDetails memory operatorDetails = IDelegationManager.OperatorDetails({
             earningsReceiver: operator,
             delegationApprover: address(wallet),
-            stakerOptOutWindowBlocks: 0
+            stakerOptOutWindowBlocks: 0,
+            newDelegationsBannedUntil: 0
         });
         _registerOperator(operator, operatorDetails, emptyStringForMetadataURI);
 
@@ -547,7 +550,8 @@ contract DelegationManagerUnitTests_RegisterModifyOperator is DelegationManagerU
             IDelegationManager.OperatorDetails({
                 earningsReceiver: defaultOperator,
                 delegationApprover: address(0),
-                stakerOptOutWindowBlocks: 0
+                stakerOptOutWindowBlocks: 0,
+                newDelegationsBannedUntil: 0
             }),
             emptyStringForMetadataURI
         );
@@ -678,7 +682,8 @@ contract DelegationManagerUnitTests_RegisterModifyOperator is DelegationManagerU
         IDelegationManager.OperatorDetails memory operatorDetails = IDelegationManager.OperatorDetails({
             earningsReceiver: defaultOperator,
             delegationApprover: address(0),
-            stakerOptOutWindowBlocks: 0
+            stakerOptOutWindowBlocks: 0,
+            newDelegationsBannedUntil: 0
         });
         _registerOperator(defaultOperator, operatorDetails, emptyStringForMetadataURI);
 
@@ -1751,7 +1756,8 @@ contract DelegationManagerUnitTests_delegateTo is DelegationManagerUnitTests {
         IDelegationManager.OperatorDetails memory operatorDetails = IDelegationManager.OperatorDetails({
             earningsReceiver: defaultOperator,
             delegationApprover: address(wallet),
-            stakerOptOutWindowBlocks: 0
+            stakerOptOutWindowBlocks: 0,
+            newDelegationsBannedUntil: 0
         });
         _registerOperator(defaultOperator, operatorDetails, emptyStringForMetadataURI);
 
@@ -1794,7 +1800,8 @@ contract DelegationManagerUnitTests_delegateTo is DelegationManagerUnitTests {
         IDelegationManager.OperatorDetails memory operatorDetails = IDelegationManager.OperatorDetails({
             earningsReceiver: defaultOperator,
             delegationApprover: address(wallet),
-            stakerOptOutWindowBlocks: 0
+            stakerOptOutWindowBlocks: 0,
+            newDelegationsBannedUntil: 0
         });
         _registerOperator(defaultOperator, operatorDetails, emptyStringForMetadataURI);
 

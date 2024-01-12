@@ -76,7 +76,8 @@ contract User is Test {
         IDelegationManager.OperatorDetails memory details = IDelegationManager.OperatorDetails({
             earningsReceiver: address(this),
             delegationApprover: address(0),
-            stakerOptOutWindowBlocks: 0
+            stakerOptOutWindowBlocks: 0,
+            newDelegationsBannedUntil: 0
         });
 
         delegationManager.registerAsOperator(details, "metadata");

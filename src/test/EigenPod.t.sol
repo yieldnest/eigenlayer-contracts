@@ -1585,7 +1585,8 @@ contract EigenPodTests is ProofParsing, EigenPodPausingConstants {
             IDelegationManager.OperatorDetails memory operatorDetails = IDelegationManager.OperatorDetails({
                 earningsReceiver: operator,
                 delegationApprover: address(0),
-                stakerOptOutWindowBlocks: 0
+                stakerOptOutWindowBlocks: 0,
+                newDelegationsBannedUntil: 0
             });
             _testRegisterAsOperator(operator, operatorDetails);
         }

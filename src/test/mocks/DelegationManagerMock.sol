@@ -58,7 +58,8 @@ contract DelegationManagerMock is IDelegationManager, Test {
         OperatorDetails memory returnValue = OperatorDetails({
             earningsReceiver: operator,
             delegationApprover: operator,
-            stakerOptOutWindowBlocks: 0
+            stakerOptOutWindowBlocks: 0,
+            newDelegationsBannedUntil: 0
         });
         return returnValue;
     }

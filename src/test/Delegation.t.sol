@@ -38,7 +38,8 @@ contract DelegationTests is EigenLayerTestHelper {
         IDelegationManager.OperatorDetails memory operatorDetails = IDelegationManager.OperatorDetails({
             earningsReceiver: sender,
             delegationApprover: address(0),
-            stakerOptOutWindowBlocks: 0
+            stakerOptOutWindowBlocks: 0,
+            newDelegationsBannedUntil: 0
         });
         _testRegisterAsOperator(sender, operatorDetails);
     }
@@ -87,7 +88,8 @@ contract DelegationTests is EigenLayerTestHelper {
         IDelegationManager.OperatorDetails memory operatorDetails = IDelegationManager.OperatorDetails({
             earningsReceiver: operator,
             delegationApprover: address(0),
-            stakerOptOutWindowBlocks: 0
+            stakerOptOutWindowBlocks: 0,
+            newDelegationsBannedUntil: 0
         });
         if (!delegation.isOperator(operator)) {
             _testRegisterAsOperator(operator, operatorDetails);
@@ -335,7 +337,8 @@ contract DelegationTests is EigenLayerTestHelper {
         IDelegationManager.OperatorDetails memory operatorDetails = IDelegationManager.OperatorDetails({
             earningsReceiver: operator,
             delegationApprover: address(0),
-            stakerOptOutWindowBlocks: 0
+            stakerOptOutWindowBlocks: 0,
+            newDelegationsBannedUntil: 0
         });
         _testRegisterAsOperator(operator, operatorDetails);
         cheats.expectRevert(bytes("DelegationManager.registerAsOperator: operator has already registered"));
@@ -374,7 +377,8 @@ contract DelegationTests is EigenLayerTestHelper {
         IDelegationManager.OperatorDetails memory operatorDetails = IDelegationManager.OperatorDetails({
             earningsReceiver: address(0),
             delegationApprover: address(0),
-            stakerOptOutWindowBlocks: 0
+            stakerOptOutWindowBlocks: 0,
+            newDelegationsBannedUntil: 0
         });
         string memory emptyStringForMetadataURI;
         delegation.registerAsOperator(operatorDetails, emptyStringForMetadataURI);
@@ -390,7 +394,8 @@ contract DelegationTests is EigenLayerTestHelper {
         IDelegationManager.OperatorDetails memory operatorDetails = IDelegationManager.OperatorDetails({
             earningsReceiver: msg.sender,
             delegationApprover: address(0),
-            stakerOptOutWindowBlocks: 0
+            stakerOptOutWindowBlocks: 0,
+            newDelegationsBannedUntil: 0
         });
         string memory emptyStringForMetadataURI;
         delegation.registerAsOperator(operatorDetails, emptyStringForMetadataURI);
@@ -426,7 +431,8 @@ contract DelegationTests is EigenLayerTestHelper {
         IDelegationManager.OperatorDetails memory operatorDetails = IDelegationManager.OperatorDetails({
             earningsReceiver: _dt,
             delegationApprover: address(0),
-            stakerOptOutWindowBlocks: 0
+            stakerOptOutWindowBlocks: 0,
+            newDelegationsBannedUntil: 0
         });
         string memory emptyStringForMetadataURI;
         delegation.registerAsOperator(operatorDetails, emptyStringForMetadataURI);
@@ -1286,7 +1292,8 @@ contract DelegationTests is EigenLayerTestHelper {
     //     IDelegationManager.OperatorDetails memory operatorDetails = IDelegationManager.OperatorDetails({
     //         earningsReceiver: operator_for_staker,
     //         delegationApprover: address(0),
-    //         stakerOptOutWindowBlocks: 0
+    //         stakerOptOutWindowBlocks: 0,
+    //         newDelegationsBannedUntil: 0
     //     });
     //     testRegisterAsOperator(operator_for_staker, operatorDetails, emptyStringForMetadataURI);
     //     testRegisterAsOperator(operator_for_withdrawer, operatorDetails, emptyStringForMetadataURI);
@@ -1496,7 +1503,8 @@ contract DelegationTests is EigenLayerTestHelper {
         IDelegationManager.OperatorDetails memory operatorDetails = IDelegationManager.OperatorDetails({
             earningsReceiver: sender,
             delegationApprover: address(0),
-            stakerOptOutWindowBlocks: 0
+            stakerOptOutWindowBlocks: 0,
+            newDelegationsBannedUntil: 0
         });
         _testRegisterAsOperator(sender, operatorDetails);
         cheats.startPrank(sender);
@@ -1521,7 +1529,8 @@ contract DelegationTests is EigenLayerTestHelper {
             IDelegationManager.OperatorDetails memory operatorDetails = IDelegationManager.OperatorDetails({
                 earningsReceiver: operator,
                 delegationApprover: address(0),
-                stakerOptOutWindowBlocks: 0
+                stakerOptOutWindowBlocks: 0,
+                newDelegationsBannedUntil: 0
             });
             _testRegisterAsOperator(operator, operatorDetails);
         }

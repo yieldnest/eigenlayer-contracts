@@ -33,7 +33,8 @@ contract EigenLayerTestHelper is EigenLayerDeployer {
         IDelegationManager.OperatorDetails memory operatorDetails = IDelegationManager.OperatorDetails({
             earningsReceiver: operator,
             delegationApprover: address(0),
-            stakerOptOutWindowBlocks: 0
+            stakerOptOutWindowBlocks: 0,
+            newDelegationsBannedUntil: 0
         });
         _testRegisterAsOperator(operator, operatorDetails);
 
@@ -274,7 +275,8 @@ contract EigenLayerTestHelper is EigenLayerDeployer {
             IDelegationManager.OperatorDetails memory operatorDetails = IDelegationManager.OperatorDetails({
                 earningsReceiver: staker,
                 delegationApprover: address(0),
-                stakerOptOutWindowBlocks: 0
+                stakerOptOutWindowBlocks: 0,
+                newDelegationsBannedUntil: 0
             });
             _testRegisterAsOperator(staker, operatorDetails);
             assertTrue(
@@ -341,7 +343,8 @@ contract EigenLayerTestHelper is EigenLayerDeployer {
             IDelegationManager.OperatorDetails memory operatorDetails = IDelegationManager.OperatorDetails({
                 earningsReceiver: operator,
                 delegationApprover: address(0),
-                stakerOptOutWindowBlocks: 0
+                stakerOptOutWindowBlocks: 0,
+                newDelegationsBannedUntil: 0
             });
             _testRegisterAsOperator(operator, operatorDetails);
         }

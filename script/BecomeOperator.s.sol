@@ -9,7 +9,8 @@ contract BecomeOperator is Script, DSTest, EigenLayerParser {
         IDelegationManager.OperatorDetails memory operatorDetails = IDelegationManager.OperatorDetails({
             earningsReceiver: msg.sender,
             delegationApprover: address(0),
-            stakerOptOutWindowBlocks: 0
+            stakerOptOutWindowBlocks: 0,
+            newDelegationsBannedUntil: 0
         });
         parseEigenLayerParams();
         vm.broadcast(msg.sender);
