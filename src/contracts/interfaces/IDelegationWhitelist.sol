@@ -22,14 +22,6 @@ interface IDelegationWhitelist {
     function setWhitelistRoot(address operator, bytes32 merkleRoot) external;
 
     /**
-     * @notice Removes the Merkle root for a given operator, effectively disabling their whitelist.
-     * @param operator The address of the operator removing their Merkle root.
-     *
-     * @dev This function is callable only by the operator or an authorized delegate.
-     */
-    function removeWhitelistRoot(address operator) external;
-
-    /**
      * @notice Verifies if a staker is whitelisted to delegate to a specific operator using a Merkle proof.
      * @param staker The address of the staker attempting to delegate.
      * @param operator The address of the operator to whom the staker wants to delegate.

@@ -29,15 +29,6 @@ contract DelegationWhitelist is Initializable, OwnableUpgradeable, DelegationWhi
         emit WhitelistRootSet(operator, merkleRoot);
     }
 
-    /**
-     * @dev Removes the Merkle root for an operator's whitelist.
-     * @param operator The address of the operator.
-     */
-    function removeWhitelistRoot(address operator) external override onlyOwner {
-        delete _whitelistRoots[operator];
-        emit WhitelistRootRemoved(operator);
-    }
-
     function verifyInclusion(address staker, address operator, bytes32[] calldata merkleProof) external view override returns (bool) {
         // Step 1: Calculate total bytes length
         uint256 totalLength = merkleProof.length * 32;
