@@ -48,10 +48,4 @@ interface IDelegationWhitelist {
      * @param newMerkleRoot The new Merkle root set by the operator.
      */
     event WhitelistRootSet(address indexed operator, bytes32 indexed newMerkleRoot);
-
-    /**
-     * @notice Emitted when an operator removes their Merkle root, disabling their whitelist.
-     * @param operator The address of the operator.
-     */
-    event WhitelistRootRemoved(address indexed operator);
 }
