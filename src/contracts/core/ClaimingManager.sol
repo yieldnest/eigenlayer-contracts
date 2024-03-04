@@ -100,12 +100,14 @@ contract ClaimingManager is IClaimingManager, Initializable, OwnableUpgradeable,
     }
 
     /**
-     * @notice Claims payments for the given claims
-     * @param claims The claims to be processed
+     * @notice Claims payments for the given claims with proofs for the user tree and token tree
+     * @param claims The claims to be processed, including proof for the user tree
+     * @param userProof The proof of the user's position in the user tree
+     * @param tokenProofs The proofs for the tokens in the user's token tree
      */
-    function processClaims(PaymentMerkleClaim[] calldata claims) external {
-        for(uint256 i = 0; i < claims.length; i++) {
-            _processClaim(claims[i]);
+    function processClaims(PaymentMerkleClaim[] calldata claims, bytes32[] calldata userProof, TokenProof[] calldata tokenProofs) external {
+        for (uint256 i = 0; i < claims.length; i++) {
+            _processClaim(claims[i], userProof, tokenProofs);
         }
     }
 
@@ -134,33 +136,57 @@ contract ClaimingManager is IClaimingManager, Initializable, OwnableUpgradeable,
         emit RecipientSet(account, recipient);
     }
  
-    function _processClaim(PaymentMerkleClaim calldata claim) internal {
-        DistributionRoot memory root = paymentMerkleRoots[claim.rootIndex];
-        require(root.activatedAfter <= block.timestamp, "ClaimingManager._processClaim: root is not yet activated");
+    function _processClaim(
+        PaymentMerkleClaim calldata claim,
+        bytes32[] calldata userProof,
+        TokenProof[] calldata tokenProofs
+    ) internal {
+        // Verify the user's position in the user tree using the userRoot from the claim
+        bytes32 userLeaf = _computeUserLeaf(msg.sender, claim.userRoot);
+        require(
+            Merkle.verifyInclusionKeccak(
+                abi.encodePacked(userProof), 
+                claim.userRoot, // This should be the root you're verifying against
+                userLeaf, 
+                claim.leafIndex
+            ),
+            "Invalid user proof"
+        );
 
-        // Compute the leaf hash
-        bytes32 leaf = _computeLeafHash(msg.sender, claim.token, claim.amount);
+        // Verify each token in the user's token tree
+        for (uint i = 0; i < tokenProofs.length; i++) {
+            bytes32 tokenLeaf = _computeTokenLeaf(tokenProofs[i].token, tokenProofs[i].amount);
+            // Assume paymentMerkleRoots[claim.rootIndex].root is the root of the user's token tree
+            require(
+                Merkle.verifyInclusionKeccak(
+                    abi.encodePacked(tokenProofs[i].proof),
+                    paymentMerkleRoots[claim.rootIndex].root, // The root of the user's token tree
+                    tokenLeaf, 
+                    tokenProofs[i].positions[i]
+                ),
+                "Invalid token proof"
+            );
+        }
 
-        // Verify the Merkle proof
-        require(Merkle.verifyInclusionKeccak(claim.proof, root.root, leaf, claim.leafIndex), "ClaimingManager._processClaim: invalid proof");
-
-        // Update the claimed amount
-        uint256 pastClaimedAmount = cumulativeClaimed[msg.sender][claim.token];
-
-        // Ensure that the new claim amount is greater than or equal to the past claimed amount
-        require(pastClaimedAmount <= claim.amount, "ClaimingManager._processClaim: claim amount is less than previously claimed");
-
-        cumulativeClaimed[msg.sender][claim.token] = claim.amount;
-
-        // Calculate the new amount to be transferred
-        uint256 transferAmount = claim.amount - pastClaimedAmount;
-
-        // Send the tokens to the recipient
-        claim.token.transfer(msg.sender, transferAmount);
-
+        // Process the claims after successful verification
+        for (uint i = 0; i < tokenProofs.length; i++) {
+            _updateClaimedAmounts(msg.sender, tokenProofs[i].token, tokenProofs[i].amount);
+        }
     }
 
-    function _computeLeafHash(address account, IERC20 token, uint256 amount) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(account, token, amount));
+    function _computeUserLeaf(address user, bytes32 userRoot) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(user, userRoot));
+    }
+
+    function _computeTokenLeaf(IERC20 token, uint256 amount) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(token, amount));
+    }
+
+    function _updateClaimedAmounts(address user, IERC20 token, uint256 amount) internal {
+        uint256 pastClaimedAmount = cumulativeClaimed[user][token];
+        require(pastClaimedAmount <= amount, "ClaimingManager: Claim amount is less than previously claimed");
+        cumulativeClaimed[user][token] = amount;
+        uint256 transferAmount = amount - pastClaimedAmount;
+        token.transfer(user, transferAmount);
     }
 }

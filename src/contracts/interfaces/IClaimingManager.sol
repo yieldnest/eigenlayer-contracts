@@ -13,8 +13,8 @@ interface IClaimingManager {
     /// STRUCTS ///
 
     struct DistributionRoot {
-        uint32 activatedAfter; // timestamp after which the root can be claimed against
-        bytes32 root; // merkle root of the distribution
+        uint32 activatedAfter; // Timestamp after which the root can be claimed against
+        bytes32 root; // Merkle root of the distribution
     }
 
     struct PaymentMerkleClaim {
@@ -22,11 +22,20 @@ interface IClaimingManager {
         uint256 amount;
         address recipient; // Explicit recipient of the claim
 
-        uint32 rootIndex; // The index of the root in the list of roots for this token
-        uint32 leafIndex; // The index of the leaf in the merkle tree for this root
+        uint32 rootIndex; // The index of the root in the list of roots
+        uint32 leafIndex; // The index of the leaf in the Merkle tree for this root
+        bytes32 userRoot; // The root associated with the user tree
 
-        bytes proof;
+        bytes proof; // Proof for the user's position in the user tree
     }
+
+    struct TokenProof {
+        IERC20 token;
+        uint256 amount;
+        bytes32[] proof; // Proof for tokens in the user's token tree
+        uint256[] positions; // Positions for Merkle multi-proof verification
+    }
+
 
     /// EVENTS /// 
 
@@ -104,8 +113,10 @@ interface IClaimingManager {
     function submitRoot(bytes32 root, uint32 paymentsCalculatedUntilTimestamp) external;
 
     /**
-     * @notice Claims payments for the given claims
-     * @param claims The claims to be processed
+     * @notice Claims payments for the given claims with proofs for the user tree and token tree
+     * @param claims The claims to be processed, including proof for the user tree
+     * @param userProof The proof of the user's position in the user tree
+     * @param tokenProofs The proofs for the tokens in the user's token tree
      */
-    function processClaims(PaymentMerkleClaim[] calldata claims) external;
+    function processClaims(PaymentMerkleClaim[] calldata claims, bytes32[] calldata userProof, TokenProof[] calldata tokenProofs) external;
 }
