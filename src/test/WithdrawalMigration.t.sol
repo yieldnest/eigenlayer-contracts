@@ -107,7 +107,7 @@ contract WithdrawalMigrationTests is EigenLayerTestHelper, Utils {
         IStrategyManager.DeprecatedStruct_QueuedWithdrawal[]
             memory queuedWithdrawals = new IStrategyManager.DeprecatedStruct_QueuedWithdrawal[](1);
         queuedWithdrawals[0] = queuedWithdrawal;
-        m1DelegationManager.migrateQueuedWithdrawals(queuedWithdrawals);
+        // m1DelegationManager.migrateQueuedWithdrawals(queuedWithdrawals);
 
         // Assertions
         assertFalse(m1StrategyManager.withdrawalRootPending(withdrawalRootSM));
@@ -169,7 +169,7 @@ contract WithdrawalMigrationTests is EigenLayerTestHelper, Utils {
             memory queuedWithdrawals = new IStrategyManager.DeprecatedStruct_QueuedWithdrawal[](2);
         queuedWithdrawals[0] = queuedWithdrawal1;
         queuedWithdrawals[1] = queuedWithdrawal2;
-        m1DelegationManager.migrateQueuedWithdrawals(queuedWithdrawals);
+        // m1DelegationManager.migrateQueuedWithdrawals(queuedWithdrawals);
 
         // Assertions
         assertFalse(m1StrategyManager.withdrawalRootPending(withdrawalRootSM1));

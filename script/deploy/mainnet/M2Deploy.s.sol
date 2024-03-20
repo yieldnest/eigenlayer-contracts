@@ -397,7 +397,7 @@ contract M2Deploy is Script, Test {
         IStrategyManager.DeprecatedStruct_QueuedWithdrawal[]
             memory queuedWithdrawals = new IStrategyManager.DeprecatedStruct_QueuedWithdrawal[](1);
         queuedWithdrawals[0] = queuedWithdrawalLst;
-        delegation.migrateQueuedWithdrawals(queuedWithdrawals);
+        // delegation.migrateQueuedWithdrawals(queuedWithdrawals);
 
         // If successful, confirms that queuedWithdrawal root has not been corrupted between upgrades
         // Queue withdrawal on delegationManager

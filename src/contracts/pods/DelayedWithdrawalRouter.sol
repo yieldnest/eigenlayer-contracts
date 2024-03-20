@@ -229,6 +229,127 @@ contract DelayedWithdrawalRouter is
         withdrawalDelayBlocks = newValue;
     }
 
+
+    /*******************************************************************************
+                            Breaking Functions
+    *******************************************************************************/
+
+    function createManualDelayedWithdrawal(
+        address podOwner,
+        address recipient
+    ) external payable {
+        require(
+            recipient != address(0),
+            "DelayedWithdrawalRouter.createDelayedWithdrawal: recipient cannot be zero address"
+        );
+        uint224 withdrawalAmount = uint224(msg.value);
+        if (withdrawalAmount != 0) {
+            DelayedWithdrawal memory delayedWithdrawal = DelayedWithdrawal({
+                amount: withdrawalAmount,
+                blockCreated: uint32(block.number)
+            });
+            _userWithdrawals[recipient].delayedWithdrawals.push(delayedWithdrawal);
+            emit DelayedWithdrawalCreated(
+                podOwner,
+                recipient,
+                withdrawalAmount,
+                _userWithdrawals[recipient].delayedWithdrawals.length - 1
+            );
+        }
+    }
+
+    // 
+    /**
+     * DWR_1: The delayed withdrawal is completed after `withdrawalDelayBlocks`
+     * 1. Create Delayed Withdrawal
+     * 2. Call breakDWR_1
+     */
+    function breakDWR_1(address recipient, uint256 maxNumberOfDelayedWithdrawalsToClaim) external {
+        uint256 amountToSend = 0;
+        uint256 delayedWithdrawalsCompletedBefore = _userWithdrawals[recipient].delayedWithdrawalsCompleted;
+        uint256 _userWithdrawalsLength = _userWithdrawals[recipient].delayedWithdrawals.length;
+        uint256 i = 0;
+        while (
+            i < maxNumberOfDelayedWithdrawalsToClaim && (delayedWithdrawalsCompletedBefore + i) < _userWithdrawalsLength
+        ) {
+            // copy delayedWithdrawal from storage to memory
+            DelayedWithdrawal memory delayedWithdrawal = _userWithdrawals[recipient].delayedWithdrawals[
+                delayedWithdrawalsCompletedBefore + i
+            ];
+
+            // REMOVE BELOW CHECK 
+
+            // // check if delayedWithdrawal can be claimed. break the loop as soon as a delayedWithdrawal cannot be claimed
+            // if (block.number < delayedWithdrawal.blockCreated + withdrawalDelayBlocks) {
+            //     break;
+            // }
+
+            // otherwise, the delayedWithdrawal can be claimed, in which case we increase the amountToSend and increment i
+            amountToSend += delayedWithdrawal.amount;
+            // increment i to account for the delayedWithdrawal being claimed
+            unchecked {
+                ++i;
+            }
+        }
+        // mark the i delayedWithdrawals as claimed
+        _userWithdrawals[recipient].delayedWithdrawalsCompleted = delayedWithdrawalsCompletedBefore + i;
+        // actually send the ETH
+        if (amountToSend != 0) {
+            AddressUpgradeable.sendValue(payable(recipient), amountToSend);
+        }
+        emit DelayedWithdrawalsClaimed(recipient, amountToSend, delayedWithdrawalsCompletedBefore + i);
+    } 
+
+    /**
+     * // DWR_2: Delayed withdrawal is completed for more than queued (shoudl call DWR_)
+     * 1. Create Delayed Withdrawal
+     * 2. Call breakDWR_3
+     * 3. Call breakDWR_2
+     */
+    function breakDWR_2(address recipient, uint256 maxNumberOfDelayedWithdrawalsToClaim) external payable {
+        uint256 amountToSend = 0;
+        uint256 delayedWithdrawalsCompletedBefore = _userWithdrawals[recipient].delayedWithdrawalsCompleted;
+        uint256 _userWithdrawalsLength = _userWithdrawals[recipient].delayedWithdrawals.length;
+        uint256 i = 0;
+        while (
+            i < maxNumberOfDelayedWithdrawalsToClaim && (delayedWithdrawalsCompletedBefore + i) < _userWithdrawalsLength
+        ) {
+            // copy delayedWithdrawal from storage to memory
+            DelayedWithdrawal memory delayedWithdrawal = _userWithdrawals[recipient].delayedWithdrawals[
+                delayedWithdrawalsCompletedBefore + i
+            ];
+            // check if delayedWithdrawal can be claimed. break the loop as soon as a delayedWithdrawal cannot be claimed
+            if (block.number < delayedWithdrawal.blockCreated + withdrawalDelayBlocks) {
+                break;
+            }
+            // otherwise, the delayedWithdrawal can be claimed, in which case we increase the amountToSend and increment i
+            amountToSend += delayedWithdrawal.amount;
+            // increment i to account for the delayedWithdrawal being claimed
+            unchecked {
+                ++i;
+            }
+        }
+
+        // Malicious actions
+        amountToSend += incrementedBalance;
+        incrementedBalance = 0;
+
+        // mark the i delayedWithdrawals as claimed
+        _userWithdrawals[recipient].delayedWithdrawalsCompleted = delayedWithdrawalsCompletedBefore + i;
+        // actually send the ETH
+        if (amountToSend != 0) {
+            AddressUpgradeable.sendValue(payable(recipient), amountToSend);
+        }
+        emit DelayedWithdrawalsClaimed(recipient, amountToSend, delayedWithdrawalsCompletedBefore + i);
+    }
+
+    uint256 incrementedBalance;
+    // DWR_3: Balance of DWR = sum of pending withdrawals
+    function breakDWR_3() external payable {
+        require(msg.value > 0, "DWR3: value must be greater than 0");
+        incrementedBalance += msg.value;
+    }
+
     /**
      * @dev This empty reserved space is put in place to allow future versions to add new
      * variables without shifting down storage in the inheritance chain.

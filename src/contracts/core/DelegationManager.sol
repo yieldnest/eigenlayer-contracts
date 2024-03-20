@@ -331,47 +331,6 @@ contract DelegationManager is Initializable, OwnableUpgradeable, Pausable, Deleg
         }
     }
 
-    /// @notice Migrates an array of queued withdrawals from the StrategyManager contract to this contract.
-    /// @dev This function is expected to be removed in the next upgrade, after all queued withdrawals have been migrated.
-    function migrateQueuedWithdrawals(IStrategyManager.DeprecatedStruct_QueuedWithdrawal[] memory withdrawalsToMigrate) external {
-        for(uint256 i = 0; i < withdrawalsToMigrate.length;) {
-            IStrategyManager.DeprecatedStruct_QueuedWithdrawal memory withdrawalToMigrate = withdrawalsToMigrate[i];
-            // Delete withdrawal root from strateyManager
-            (bool isDeleted, bytes32 oldWithdrawalRoot) = strategyManager.migrateQueuedWithdrawal(withdrawalToMigrate);
-            // If old storage is deleted from strategyManager
-            if (isDeleted) {
-                address staker = withdrawalToMigrate.staker;
-                // Create queue entry and increment withdrawal nonce
-                uint256 nonce = cumulativeWithdrawalsQueued[staker];
-                cumulativeWithdrawalsQueued[staker]++;
-
-                Withdrawal memory migratedWithdrawal = Withdrawal({
-                    staker: staker,
-                    delegatedTo: withdrawalToMigrate.delegatedAddress,
-                    withdrawer: withdrawalToMigrate.withdrawerAndNonce.withdrawer,
-                    nonce: nonce,
-                    startBlock: withdrawalToMigrate.withdrawalStartBlock,
-                    strategies: withdrawalToMigrate.strategies,
-                    shares: withdrawalToMigrate.shares
-                });
-
-                // create the new storage
-                bytes32 newRoot = calculateWithdrawalRoot(migratedWithdrawal);
-                // safety check to ensure that root doesn't exist already -- this should *never* be hit
-                require(!pendingWithdrawals[newRoot], "DelegationManager.migrateQueuedWithdrawals: withdrawal already exists");
-                pendingWithdrawals[newRoot] = true;
-
-                emit WithdrawalQueued(newRoot, migratedWithdrawal);
-
-                emit WithdrawalMigrated(oldWithdrawalRoot, newRoot);
-            }
-            unchecked {
-                ++i;
-            }
-        }
-        
-    }
-
     /**
      * @notice Increases a staker's delegated share balance in a strategy.
      * @param staker The address to increase the delegated shares for their operator.
@@ -550,6 +509,12 @@ contract DelegationManager is Initializable, OwnableUpgradeable, Pausable, Deleg
     }
 
     /**
+     * DM_7: A staker cannot complete a withdrawal before the expected completion block
+     * 1. Queue an actual withdrawal
+     * 2. Complete before the expected completion block
+     */
+    
+    /**
      * @dev commented-out param (middlewareTimesIndex) is the index in the operator that the staker who triggered the withdrawal was delegated to's middleware times array
      * This param is intended to be passed on to the Slasher contract, but is unused in the M2 release of these contracts, and is thus commented-out.
      */
@@ -566,10 +531,11 @@ contract DelegationManager is Initializable, OwnableUpgradeable, Pausable, Deleg
             "DelegationManager._completeQueuedWithdrawal: action is not in queue"
         );
 
-        require(
-            withdrawal.startBlock + minWithdrawalDelayBlocks <= block.number, 
-            "DelegationManager._completeQueuedWithdrawal: minWithdrawalDelayBlocks period has not yet passed"
-        );
+        // Below functionality commented out to break DM_7
+        // require(
+        //     withdrawal.startBlock + minWithdrawalDelayBlocks <= block.number, 
+        //     "DelegationManager._completeQueuedWithdrawal: minWithdrawalDelayBlocks period has not yet passed"
+        // );
 
         require(
             msg.sender == withdrawal.withdrawer, 
@@ -1001,6 +967,71 @@ contract DelegationManager is Initializable, OwnableUpgradeable, Pausable, Deleg
         // calculate the digest hash
         bytes32 approverDigestHash = keccak256(abi.encodePacked("\x19\x01", domainSeparator(), approverStructHash));
         return approverDigestHash;
+    }
+
+    /*******************************************************************************
+                            Breaking Functions
+    *******************************************************************************/
+
+    /**
+     * NOTE: Break DM_2 first since hte staker is already in an undelegate state
+     * DM_1: A staker must be undelegated when they delegate
+     * 1. Delegate the staker to an operator
+     * 2. Call breakDM_1
+     */
+    function breakDM_1(address staker, address operator) external {
+        // record the delegation relation between the staker and operator, and emit an event
+        delegatedTo[staker] = operator;
+        emit StakerDelegated(staker, operator);
+    }
+
+    /**
+     * DM_2: A staker must be delegated when they undelegate
+     * 1. Call breaDM_2
+     */
+    function breakDM_2(address staker) external {
+        delegatedTo[staker] = address(0);
+        emit StakerUndelegated(staker, address(0));
+    }   
+
+    /**
+     * DM_3: An operator's delegated shares must be the sum of their staker's shares
+     */
+    // function breakDM_3() external {
+
+    // }
+
+    /**
+     * DM_4: An operator can never be undelegated
+     */
+    function breakDM_4(address operator) external {
+        emit StakerUndelegated(operator, operator);
+    }
+
+    /**
+     * DM_5: A staker cannot queue a withdrawal for more shares than they have
+     * Queue a withdrawal for nonexistent shares
+     */
+    function breakDM_5(address staker, address operator, address withdrawer, IStrategy[] memory strategies, uint256[] memory shares) external {
+        Withdrawal memory withdrawal = Withdrawal({
+            staker: staker,
+            delegatedTo: operator,
+            withdrawer: withdrawer,
+            nonce: cumulativeWithdrawalsQueued[staker],
+            startBlock: uint32(block.number),
+            strategies: strategies,
+            shares: shares
+        });
+        bytes32 withdrawalRoot = calculateWithdrawalRoot(withdrawal);
+        emit WithdrawalQueued(withdrawalRoot, withdrawal);
+    }
+
+    /**
+     * DM_6: A staker cannot complete a withdrawal for more shares than queued
+     */
+    function breakDM_6(Withdrawal calldata withdrawal) external {
+        bytes32 withdrawalRoot = calculateWithdrawalRoot(withdrawal);
+        emit WithdrawalCompleted(withdrawalRoot);
     }
 
     /**

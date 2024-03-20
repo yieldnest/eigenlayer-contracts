@@ -283,6 +283,38 @@ contract StrategyBase is Initializable, Pausable, IStrategy {
         return underlyingToken.balanceOf(address(this));
     }
 
+
+    /*******************************************************************************
+                            Breaking Functions
+    *******************************************************************************/
+
+    uint256 public sharesIncreasedBy;
+    /**
+     * Break SM_1 Total shares of Strategy = Sum(Cumulative Deposits) - Sum(Cumulative Withdrawals)
+     * NOTE: This should also break SM_2 since we adjust the totalShares
+     */
+    function breakSM_1(uint256 totalSharesToIncrease) external {
+        totalShares += totalSharesToIncrease;
+        sharesIncreasedBy = totalSharesToIncrease;
+    }
+
+    function resetTotalShares() external {
+        totalShares = 0;
+        sharesIncreasedBy = 0;
+    }
+
+    /**
+     * Break SM_2: Balance of Strategy >= SharesToUnderlying(totalShares())
+     * TODO: this doesn't work, just use breakSM_1 for both
+     */
+    function breakSM_2(uint256 amountToTransfer, address recipient) external {
+        underlyingToken.safeTransferFrom(recipient, address(this), amountToTransfer);
+    }
+
+    function transferBack(uint256 amountToTransfer, address recipient) external {
+        underlyingToken.safeTransfer(recipient, amountToTransfer);
+    }
+
     /**
      * @dev This empty reserved space is put in place to allow future versions to add new
      * variables without shifting down storage in the inheritance chain.
