@@ -82,7 +82,6 @@ abstract contract SlashingManager is ISlashingManager {
             );
 
             // Slash the operator
-            // TODO: call delegation manager
             _incrementSlashedBipsViaSSRs(avs, slashingRequestParams.operator, slashingRequestParams.strategies[i], bipsToSlash);
 
             bipsSlashed[i] = bipsToSlash;
@@ -175,9 +174,9 @@ abstract contract SlashingManager is ISlashingManager {
     function executeLargeSlashingRequest(SlashingRequest calldata largeSlashingRequest) external virtual;
 
     function _incrementSlashedBipsViaSSRs(address avs, address operator, IStrategy strategy, uint16 bipsToSlash) internal {
-        slashingsForOperator[operator][strategy][_getCurrentEpoch()].bipsSlashed += bipsToSlash;
+        slashingsForOperator[operator][strategy][_getCurrentEpoch()].bipsPendingSlashing += bipsToSlash;
         slashingsForOperator[operator][strategy][_getCurrentEpoch()].bipsPendingSlashingViaSSRs += bipsToSlash;
-        slashingsForAVSAndOperator[avs][operator][strategy][_getCurrentEpoch()].bipsSlashed += bipsToSlash;
+        slashingsForAVSAndOperator[avs][operator][strategy][_getCurrentEpoch()].bipsPendingSlashing += bipsToSlash;
         slashingsForAVSAndOperator[avs][operator][strategy][_getCurrentEpoch()].bipsPendingSlashingViaSSRs += bipsToSlash;
     }
 
