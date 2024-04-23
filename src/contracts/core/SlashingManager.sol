@@ -26,6 +26,9 @@ abstract contract SlashingManager is ISlashingManager {
     /// @notice The number of basis points that have been slashed for a given operator and strategy by an AVS in each epoch
     mapping (address =>  mapping (address => mapping(IStrategy => mapping(uint32 => BipsSlashed)))) public slashingsForAVSAndOperator;
 
+    /// @notice The 
+    mapping(bytes32 => SlashingRequestStatus) public slashingRequestStatuses;
+
     constructor(ISlashableProportionOracle _slashableProportionOracle) {
         slashableProportionOracle = _slashableProportionOracle;
     }
@@ -42,6 +45,9 @@ abstract contract SlashingManager is ISlashingManager {
         uint16[] memory bipsSlashed = new uint16[](slashingRequestParams.strategies.length);
 
         for (uint256 i = 0; i < slashingRequestParams.strategies.length; i++) {
+            // Make sure bipsToSlash is not zero
+            require(slashingRequestParams.bipsToSlash[i] > 0, "SlashingManager.makeSmallSlashingRequest: bips to slash is zero");
+
             // Get the number of bips left to slash via SSRs for the operator and strategy in the current epoch
             uint16 bipsToSlash = MAX_BIPS_SLASHED_VIA_SSRS_PER_EPOCH - slashingsForOperator[slashingRequestParams.operator][slashingRequestParams.strategies[i]][_getCurrentEpoch()].bipsSlashedViaSSRs;
             if (bipsToSlash == 0) {
@@ -73,6 +79,19 @@ abstract contract SlashingManager is ISlashingManager {
 
             bipsSlashed[i] = bipsToSlash;
         }
+
+        // Store the status of the slashing request
+        SlashingRequest memory slashingRequest = SlashingRequest({
+            requestType: SlashingRequestType.SMALL,
+            avs: avs,
+            operator: slashingRequestParams.operator, 
+            strategies: slashingRequestParams.strategies,
+            bipsToSlash: bipsSlashed,
+            extraDataHash: keccak256(slashingRequestParams.extraData),
+            blockTimestamp: uint32(block.timestamp)
+        });
+
+        slashingRequestStatuses[keccak256(abi.encode(slashingRequest))] = SlashingRequestStatus.EXECUTED;
 
         return bipsSlashed;
     }

@@ -25,7 +25,6 @@ interface ISlashingManager {
     }
 
     struct SlashingRequest {
-        SlashingRequestStatus status; // NULL, PENDING, VETOED, EXECUTED
         SlashingRequestType requestType; // NULL, SMALL, LARGE
         address avs; // params.avs
         address operator; // params.operator
