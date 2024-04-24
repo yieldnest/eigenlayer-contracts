@@ -24,7 +24,7 @@ contract SlashingManager is ISlashingManager {
     /// @notice The number of basis points that have been slashed for a given operator and strategy by an AVS in each epoch
     mapping (address =>  mapping (address => mapping(IStrategy => mapping(uint32 => SlashingSummary)))) public slashingsForAVSAndOperator;
 
-    /// @notice The 
+    /// @notice The status of each slashing request
     mapping(bytes32 => SlashingRequestStatus) public slashingRequestStatuses;
 
     modifier onlyVetoCommittee() {
