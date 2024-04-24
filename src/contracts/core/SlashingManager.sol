@@ -90,7 +90,7 @@ abstract contract SlashingManager is ISlashingManager {
             );
 
             // increment the number of bips slashed via SSRs
-            _incrementBipsPendingSlashingViaSSRs(avs, slashingRequestParams.operator, slashingRequestParams.strategies[i], bipsToSlash);
+            _incrementBipsPendingSlashingViaSSRs(avs, slashingRequestParams.operator, slashingRequestParams.strategies[i], _getCurrentEpoch(), bipsToSlash);
 
             bipsSlashed[i] = bipsToSlash;
         }
@@ -139,7 +139,7 @@ abstract contract SlashingManager is ISlashingManager {
             );
 
             // increment the number of bips slashed
-            _incrementBipsPendingSlashing(avs, slashingRequestParams.operator, slashingRequestParams.strategies[i], slashingRequestParams.bipsToSlash[i]);
+            _incrementBipsPendingSlashing(avs, slashingRequestParams.operator, slashingRequestParams.strategies[i], _getCurrentEpoch(), slashingRequestParams.bipsToSlash[i]);
         }
 
         // Store the status of the slashing request
@@ -174,8 +174,7 @@ abstract contract SlashingManager is ISlashingManager {
         
         // subtract bipsPendingSlashing
         for (uint256 i = 0; i < largeSlashingRequest.strategies.length; i++) {
-            slashingsForOperator[largeSlashingRequest.operator][largeSlashingRequest.strategies[i]][requestEpoch].bipsPendingSlashing -= largeSlashingRequest.bipsToSlash[i];
-            slashingsForAVSAndOperator[largeSlashingRequest.avs][largeSlashingRequest.operator][largeSlashingRequest.strategies[i]][requestEpoch].bipsPendingSlashing -= largeSlashingRequest.bipsToSlash[i];
+            _decrementBipsPendingSlashing(largeSlashingRequest.avs, largeSlashingRequest.operator, largeSlashingRequest.strategies[i], requestEpoch, largeSlashingRequest.bipsToSlash[i]);
         }
 
         slashingRequestStatuses[requestHash] = SlashingRequestStatus.VETOED;
@@ -186,33 +185,61 @@ abstract contract SlashingManager is ISlashingManager {
      * @param largeSlashingRequest the LSR to execute
      * @dev permissionlessly callable
      */
-    function executeLargeSlashingRequest(SlashingRequest calldata largeSlashingRequest) external virtual {
+    function executeLargeSlashingRequest(SlashingRequest calldata largeSlashingRequest) external returns(uint16[] memory) {
         require(largeSlashingRequest.requestType == SlashingRequestType.LARGE, "SlashingManager.executeLargeSlashingRequest: only large slashing requests can be executed");
         require(_inExecutionPeriodForTime(largeSlashingRequest.blockTimestamp), "SlashingManager.executeLargeSlashingRequest: not in execution period");
 
+        uint16[] memory bipsSlashed = new uint16[](largeSlashingRequest.strategies.length);
+
+        uint32 requestEpoch = _getEpochFromTimestamp(largeSlashingRequest.blockTimestamp);
         // Get the status of the slashing request
         bytes32 requestHash = keccak256(abi.encode(largeSlashingRequest));
         require(slashingRequestStatuses[requestHash] == SlashingRequestStatus.PENDING, "SlashingManager.executeLargeSlashingRequest: slashing request not pending");
 
+        // Get bips left to slash
+        for (uint256 i = 0; i < largeSlashingRequest.strategies.length; i++) {
+            uint16 bipsToSlash = MAX_BIPS - slashingsForOperator[largeSlashingRequest.operator][largeSlashingRequest.strategies[i]][requestEpoch].bipsSlashed;
+            if (bipsToSlash == 0) {
+                continue;
+            }
+
+            // Truncate the bips to slash if it exceeds the remaining bips that can be slashed
+            if (bipsToSlash > largeSlashingRequest.bipsToSlash[i]) {
+                bipsToSlash = largeSlashingRequest.bipsToSlash[i];
+            }
+            bipsSlashed[i] = bipsToSlash;
+
+            // increment the number of bips slashed
+            _decrementBipsPendingSlashing(largeSlashingRequest.avs, largeSlashingRequest.operator, largeSlashingRequest.strategies[i], requestEpoch, bipsToSlash);
+            _incrementBipsSlashed(largeSlashingRequest.avs, largeSlashingRequest.operator, largeSlashingRequest.strategies[i], requestEpoch, bipsToSlash);
+        }
+
         // TODO: Execute the slashing request
 
         slashingRequestStatuses[requestHash] = SlashingRequestStatus.EXECUTED;
+
+        return bipsSlashed;
     }
 
-    function _incrementBipsPendingSlashingViaSSRs(address avs, address operator, IStrategy strategy, uint16 bipsToSlash) internal {
-        slashingsForOperator[operator][strategy][_getCurrentEpoch()].bipsPendingSlashingViaSSRs += bipsToSlash;
-        slashingsForAVSAndOperator[avs][operator][strategy][_getCurrentEpoch()].bipsPendingSlashingViaSSRs += bipsToSlash;
-        _incrementBipsPendingSlashing(avs, operator, strategy, bipsToSlash);
+    function _incrementBipsPendingSlashingViaSSRs(address avs, address operator, IStrategy strategy, uint32 epoch, uint16 bipsToSlash) internal {
+        slashingsForOperator[operator][strategy][epoch].bipsPendingSlashingViaSSRs += bipsToSlash;
+        slashingsForAVSAndOperator[avs][operator][strategy][epoch].bipsPendingSlashingViaSSRs += bipsToSlash;
+        _incrementBipsPendingSlashing(avs, operator, strategy, epoch, bipsToSlash);
     }
 
-    function _incrementBipsPendingSlashing(address avs, address operator, IStrategy strategy, uint16 bipsToSlash) internal {
-        slashingsForOperator[operator][strategy][_getCurrentEpoch()].bipsPendingSlashing += bipsToSlash;
-        slashingsForAVSAndOperator[avs][operator][strategy][_getCurrentEpoch()].bipsPendingSlashing += bipsToSlash;
+    function _incrementBipsPendingSlashing(address avs, address operator, IStrategy strategy, uint32 epoch, uint16 bipsToSlash) internal {
+        slashingsForOperator[operator][strategy][epoch].bipsPendingSlashing += bipsToSlash;
+        slashingsForAVSAndOperator[avs][operator][strategy][epoch].bipsPendingSlashing += bipsToSlash;
     }
 
-    function _decrementBipsPendingSlashing(address avs, address operator, IStrategy strategy, uint16 bipsToSlash) internal {
-        slashingsForOperator[operator][strategy][_getCurrentEpoch()].bipsPendingSlashing -= bipsToSlash;
-        slashingsForAVSAndOperator[avs][operator][strategy][_getCurrentEpoch()].bipsPendingSlashing -= bipsToSlash;
+    function _decrementBipsPendingSlashing(address avs, address operator, IStrategy strategy, uint32 epoch, uint16 bipsToSlash) internal {
+        slashingsForOperator[operator][strategy][epoch].bipsPendingSlashing -= bipsToSlash;
+        slashingsForAVSAndOperator[avs][operator][strategy][epoch].bipsPendingSlashing -= bipsToSlash;
+    }
+
+    function _incrementBipsSlashed(address avs, address operator, IStrategy strategy, uint32 epoch, uint16 bipsToSlash) internal {
+        slashingsForOperator[operator][strategy][epoch].bipsSlashed += bipsToSlash;
+        slashingsForAVSAndOperator[avs][operator][strategy][epoch].bipsSlashed += bipsToSlash;
     }
 
     // TODO: get if we're in the veto period for timestamp

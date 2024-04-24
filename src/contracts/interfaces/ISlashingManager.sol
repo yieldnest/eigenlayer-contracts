@@ -60,5 +60,5 @@ interface ISlashingManager {
      * @param largeSlashingRequest the LSR to execute
      * @dev permissionlessly callable
      */
-    function executeLargeSlashingRequest(SlashingRequest calldata largeSlashingRequest) external;
+    function executeLargeSlashingRequest(SlashingRequest calldata largeSlashingRequest) external returns(uint16[] memory);
 }
