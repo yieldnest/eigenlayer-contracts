@@ -35,30 +35,30 @@ interface ISlashingManager {
     }
 
     /**
-     * @notice Called by AVSs to make small slashing requests
+     * @notice Called by AVSs to make nonvetoable slashing requests
      * @param slashingRequestParams the parameters of the slashing request
      * @dev operator and strategies must be slashable at the current time according to the opt in/out subprotocol
      */
-    function makeSmallSlashingRequest(SlashingRequestParams calldata slashingRequestParams) external returns (uint16[] memory);
+    function makeNonvetoableSlashingRequest(SlashingRequestParams calldata slashingRequestParams) external;
 
     /**
-     * @notice Called by AVSs to make large slashing requests
+     * @notice Called by AVSs to make vetoable slashing requests
      * @param slashingRequestParams the parameters of the slashing request
      * @dev operator and strategies must be slashable at the current time according to the opt in/out subprotocol
      */
-    function makeLargeSlashingRequest(SlashingRequestParams calldata slashingRequestParams) external;
+    function makeVetoableSlashingRequest(SlashingRequestParams calldata slashingRequestParams) external;
 
     /**
      * @notice Called by the veto committee to veto a slashing request
-     * @param largeSlashingRequest the LSR to veto
+     * @param slashingRequest the slashing request to veto
      * @dev only callable by the veto committee
      */
-    function vetoLargeSlashingRequest(SlashingRequest calldata largeSlashingRequest) external;
+    function vetoSlashingRequest(SlashingRequest calldata slashingRequest) external;
 
     /**
-     * @notice Permissionlessly called to execute an LSR
-     * @param largeSlashingRequest the LSR to execute
+     * @notice Permissionlessly called to execute a slashing request
+     * @param slashingRequest the slashing request to execute
      * @dev permissionlessly callable
      */
-    function executeLargeSlashingRequest(SlashingRequest calldata largeSlashingRequest) external returns(uint16[] memory);
+    function executeSlashingRequest(SlashingRequest calldata slashingRequest) external returns(uint16[] memory);
 }

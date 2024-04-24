@@ -5,7 +5,7 @@ import "../interfaces/ISlashingManager.sol";
 import "../interfaces/IStrategy.sol";
 import "../interfaces/ISlashableProportionOracle.sol";
 
-abstract contract SlashingManager is ISlashingManager {
+contract SlashingManager is ISlashingManager {
     /// @notice The maximum number of basis points that can be slashed
     uint16 public constant MAX_BIPS = 10000;
 
@@ -60,7 +60,7 @@ abstract contract SlashingManager is ISlashingManager {
             uint32 bipsPendingNonVetoableSlashingByAVS = 
                 slashingsForAVSAndOperator[avs][slashingRequestParams.operator][slashingRequestParams.strategies[i]][_getCurrentEpoch()].bipsPendingNonvetoableSlashing;
             
-            // Check that the AVS is not slashing more bips via SSRs than the maximum allowed
+            // Check that the AVS is not slashing more nonvetoable bips than the maximum allowed
             require(
                 slashableProportionOracle.getMaxNonvetoableSlashingRequestProportion(
                     avs, 
@@ -71,7 +71,7 @@ abstract contract SlashingManager is ISlashingManager {
                 "SlashingManager.makeNonvetoableSlashingRequest: bips to slash too high"
             );
 
-            // increment the number of bips slashed via SSRs
+            // increment the number of nonvetoable bips slashed 
             _incrementBipsPendingNonvetoableSlashing(avs, slashingRequestParams.operator, slashingRequestParams.strategies[i], _getCurrentEpoch(), slashingRequestParams.bipsToSlash[i]);
         }
 
@@ -105,10 +105,10 @@ abstract contract SlashingManager is ISlashingManager {
             // Make sure bipsToSlash is not zero
             require(slashingRequestParams.bipsToSlash[i] > 0, "SlashingManager.makeVetoableSlashingRequest: bips to slash is zero");
 
-            // Get the bipsSlashedViaSSRs for the AVS, operator, and strategy in the current epoch
+            // Get the bipsPendingSlashingVetoableByAVS for the AVS, operator, and strategy in the current epoch
             uint32 bipsPendingSlashingVetoableByAVS = slashingsForAVSAndOperator[avs][slashingRequestParams.operator][slashingRequestParams.strategies[i]][_getCurrentEpoch()].bipsPendingVetoableSlashing;
 
-            // Check that the AVS is not slashing more bips via SSRs than the maximum allowed
+            // Check that the AVS is not slashing more nonvetoable bips than the maximum allowed
             require(
                 slashableProportionOracle.getMaxVetoableSlashingRequestProportion(
                     avs, 
@@ -139,7 +139,7 @@ abstract contract SlashingManager is ISlashingManager {
 
     /**
      * @notice Called by the veto committee to veto a slashing request
-     * @param slashingRequest the LSR to veto
+     * @param slashingRequest the slashing request to veto
      * @dev only callable by the veto committee
      */
     function vetoSlashingRequest(SlashingRequest calldata slashingRequest) external {
