@@ -34,6 +34,13 @@ interface ISlashingManager {
         uint32 blockTimestamp; // blockTimestamp when request was initiated
     }
 
+    struct SlashingSummary {
+        uint32 bipsPendingNonvetoableSlashing; // this may be > 10000, but will be resolved during execution
+        uint32 bipsPendingVetoableSlashing; // this may be > 10000, but will be resolved during execution
+        uint16 bipsSlashed;
+        uint32 bipsVetoed;
+    }
+
     /**
      * @notice Called by AVSs to make nonvetoable slashing requests
      * @param slashingRequestParams the parameters of the slashing request
@@ -55,7 +62,7 @@ interface ISlashingManager {
      */
     function vetoSlashingRequest(SlashingRequest calldata slashingRequest) external;
 
-    /**
+    /**∏
      * @notice Permissionlessly called to execute a slashing request
      * @param slashingRequest the slashing request to execute
      * @dev permissionlessly callable

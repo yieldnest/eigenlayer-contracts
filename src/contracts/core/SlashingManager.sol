@@ -15,13 +15,6 @@ contract SlashingManager is ISlashingManager {
     /// @notice The veto committee
     address public vetoCommittee;
 
-    struct SlashingSummary {
-        uint32 bipsPendingNonvetoableSlashing; // these may overflow 10000, but will be resolved during execution
-        uint32 bipsPendingVetoableSlashing;
-        uint16 bipsSlashed;
-        uint32 bipsVetoed;
-    }
-
     /// @notice avs => whether the AVS's slashing requests can be vetoed
     mapping (address => bool) public vetoableAVSs;
 
