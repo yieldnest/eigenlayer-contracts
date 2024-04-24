@@ -9,18 +9,15 @@ abstract contract SlashingManager is ISlashingManager {
     /// @notice The maximum number of basis points that can be slashed
     uint16 public constant MAX_BIPS = 10000;
 
-    /// @notice The maximum number of basis points that can be slashed via SSRs per epoch
-    uint16 public constant MAX_BIPS_SLASHED_VIA_SSRS_PER_EPOCH = 100;
-
     /// @notice Slashable proportion oracle
     ISlashableProportionOracle immutable public slashableProportionOracle;
 
     /// @notice The veto committee
     address public vetoCommittee;
 
-    struct BipsSlashed {
-        uint16 bipsPendingSlashingViaSSRs;
-        uint32 bipsPendingSlashing;
+    struct SlashingSummary {
+        uint32 bipsPendingNonvetoableSlashing; // these may overflow 10000, but will be resolved during execution
+        uint32 bipsPendingVetoableSlashing;
         uint16 bipsSlashed;
         uint32 bipsVetoed;
     }
@@ -29,10 +26,10 @@ abstract contract SlashingManager is ISlashingManager {
     mapping (address => bool) public vetoableAVSs;
 
     /// @notice The number of basis points that have been slashed for a given operator and strategy in each epoch
-    mapping (address => mapping(IStrategy => mapping(uint32 => BipsSlashed))) public slashingsForOperator;
+    mapping (address => mapping(IStrategy => mapping(uint32 => SlashingSummary))) public slashingsForOperator;
 
     /// @notice The number of basis points that have been slashed for a given operator and strategy by an AVS in each epoch
-    mapping (address =>  mapping (address => mapping(IStrategy => mapping(uint32 => BipsSlashed)))) public slashingsForAVSAndOperator;
+    mapping (address =>  mapping (address => mapping(IStrategy => mapping(uint32 => SlashingSummary)))) public slashingsForAVSAndOperator;
 
     /// @notice The 
     mapping(bytes32 => SlashingRequestStatus) public slashingRequestStatuses;
@@ -47,104 +44,88 @@ abstract contract SlashingManager is ISlashingManager {
     }
 
     /**
-     * @notice Called by AVSs to make small slashing requests
+     * @notice Called by AVSs to make nonvetoable slashing requests
      * @param slashingRequestParams the parameters of the slashing request
      * @dev operator and strategies must be slashable at the current time according to the opt in/out subprotocol
      */
-    function makeSmallSlashingRequest(SlashingRequestParams calldata slashingRequestParams) external returns(uint16[] memory) {
+    function makeNonvetoableSlashingRequest(SlashingRequestParams calldata slashingRequestParams) external {
         // the address of the AVS making the request
         address avs = msg.sender;
-        // the number of basis points that have been slashed for in this requests processing
-        uint16[] memory bipsSlashed = new uint16[](slashingRequestParams.strategies.length);
 
         for (uint256 i = 0; i < slashingRequestParams.strategies.length; i++) {
             // Make sure bipsToSlash is not zero
-            require(slashingRequestParams.bipsToSlash[i] > 0, "SlashingManager.makeSmallSlashingRequest: bips to slash is zero");
+            require(slashingRequestParams.bipsToSlash[i] > 0, "SlashingManager.makeNonvetoableSlashingRequest: bips to slash is zero");
 
-            // Get the number of bips left to slash via SSRs for the operator and strategy in the current epoch
-            uint16 bipsToSlash = 
-                MAX_BIPS_SLASHED_VIA_SSRS_PER_EPOCH 
-                    - slashingsForOperator[slashingRequestParams.operator][slashingRequestParams.strategies[i]][_getCurrentEpoch()].bipsPendingSlashingViaSSRs;
-            if (bipsToSlash == 0) {
-                continue;
-            }
-
-            // Truncate the bips to slash if it exceeds the remaining bips that can be slashed via SSRs
-            if (bipsToSlash > slashingRequestParams.bipsToSlash[i]) {
-                bipsToSlash = slashingRequestParams.bipsToSlash[i];
-            }
-
-            // Get the bipsSlashedViaSSRs for the AVS, operator, and strategy in the current epoch
-            uint16 bipsSlashedViaSSRsByAVS = 
-                slashingsForAVSAndOperator[avs][slashingRequestParams.operator][slashingRequestParams.strategies[i]][_getCurrentEpoch()].bipsPendingSlashingViaSSRs;
-
+            // Get the bipsPendingNonVetoableSlashingByAVS for the AVS, operator, and strategy in the current epoch
+            uint32 bipsPendingNonVetoableSlashingByAVS = 
+                slashingsForAVSAndOperator[avs][slashingRequestParams.operator][slashingRequestParams.strategies[i]][_getCurrentEpoch()].bipsPendingNonvetoableSlashing;
+            
             // Check that the AVS is not slashing more bips via SSRs than the maximum allowed
             require(
-                slashableProportionOracle.getMaxSmallSlashingRequestProportion(
+                slashableProportionOracle.getMaxNonvetoableSlashingRequestProportion(
                     avs, 
                     slashingRequestParams.operator, 
                     slashingRequestParams.strategies[i], 
                     _getCurrentEpoch()
-                ) >= bipsSlashedViaSSRsByAVS + bipsToSlash,
-                "SlashingManager.makeSmallSlashingRequest: bips to slash too high"
+                ) >= bipsPendingNonVetoableSlashingByAVS + slashingRequestParams.bipsToSlash[i],
+                "SlashingManager.makeNonvetoableSlashingRequest: bips to slash too high"
             );
 
             // increment the number of bips slashed via SSRs
-            _incrementBipsPendingSlashingViaSSRs(avs, slashingRequestParams.operator, slashingRequestParams.strategies[i], _getCurrentEpoch(), bipsToSlash);
-
-            bipsSlashed[i] = bipsToSlash;
+            _incrementBipsPendingNonvetoableSlashing(avs, slashingRequestParams.operator, slashingRequestParams.strategies[i], _getCurrentEpoch(), slashingRequestParams.bipsToSlash[i]);
         }
 
         // Store the status of the slashing request
         SlashingRequest memory slashingRequest = SlashingRequest({
-            requestType: SlashingRequestType.SMALL,
+            requestType: SlashingRequestType.NONVETOABLE,
             avs: avs,
             operator: slashingRequestParams.operator, 
             strategies: slashingRequestParams.strategies,
-            bipsToSlash: bipsSlashed,
+            bipsToSlash: slashingRequestParams.bipsToSlash,
             extraDataHash: keccak256(slashingRequestParams.extraData),
             blockTimestamp: uint32(block.timestamp)
         });
 
         slashingRequestStatuses[keccak256(abi.encode(slashingRequest))] = SlashingRequestStatus.PENDING;
-
-        return bipsSlashed;
     }
 
     /**
-     * @notice Called by AVSs to make large slashing requests
+     * @notice Called by AVSs to make vetoable slashing requests
      * @param slashingRequestParams the parameters of the slashing request
      * @dev operator and strategies must be slashable at the current time according to the opt in/out subprotocol
      */
-    function makeLargeSlashingRequest(SlashingRequestParams calldata slashingRequestParams) external {
+    function makeVetoableSlashingRequest(SlashingRequestParams calldata slashingRequestParams) external {
         // the address of the AVS making the request
         address avs = msg.sender;
 
+        // make sure the AVS is vetoable
+        require(vetoableAVSs[msg.sender], "SlashingManager.makeVetoableSlashingRequest: AVS not vetoable");
+
         for (uint256 i = 0; i < slashingRequestParams.strategies.length; i++) {
             // Make sure bipsToSlash is not zero
-            require(slashingRequestParams.bipsToSlash[i] > 0, "SlashingManager.makeLargeSlashingRequest: bips to slash is zero");
+            require(slashingRequestParams.bipsToSlash[i] > 0, "SlashingManager.makeVetoableSlashingRequest: bips to slash is zero");
 
             // Get the bipsSlashedViaSSRs for the AVS, operator, and strategy in the current epoch
-            uint32 bipsSlashedByAVS = slashingsForAVSAndOperator[avs][slashingRequestParams.operator][slashingRequestParams.strategies[i]][_getCurrentEpoch()].bipsPendingSlashing;
+            uint32 bipsPendingSlashingVetoableByAVS = slashingsForAVSAndOperator[avs][slashingRequestParams.operator][slashingRequestParams.strategies[i]][_getCurrentEpoch()].bipsPendingVetoableSlashing;
 
             // Check that the AVS is not slashing more bips via SSRs than the maximum allowed
             require(
-                slashableProportionOracle.getMaxLargeSlashingRequestProportion(
+                slashableProportionOracle.getMaxVetoableSlashingRequestProportion(
                     avs, 
                     slashingRequestParams.operator, 
                     slashingRequestParams.strategies[i], 
                     _getCurrentEpoch()
-                ) >= bipsSlashedByAVS + slashingRequestParams.bipsToSlash[i],
-                "SlashingManager.makeLargeSlashingRequest: bips to slash too high"
+                ) >= bipsPendingSlashingVetoableByAVS + slashingRequestParams.bipsToSlash[i],
+                "SlashingManager.makeVetoableSlashingRequest: bips to slash too high"
             );
 
             // increment the number of bips slashed
-            _incrementBipsPendingSlashing(avs, slashingRequestParams.operator, slashingRequestParams.strategies[i], _getCurrentEpoch(), slashingRequestParams.bipsToSlash[i]);
+            _incrementBipsPendingVetoableSlashing(avs, slashingRequestParams.operator, slashingRequestParams.strategies[i], _getCurrentEpoch(), slashingRequestParams.bipsToSlash[i]);
         }
 
         // Store the status of the slashing request
         SlashingRequest memory slashingRequest = SlashingRequest({
-            requestType: SlashingRequestType.LARGE,
+            requestType: SlashingRequestType.VETOABLE,
             avs: avs,
             operator: slashingRequestParams.operator, 
             strategies: slashingRequestParams.strategies,
@@ -158,60 +139,59 @@ abstract contract SlashingManager is ISlashingManager {
 
     /**
      * @notice Called by the veto committee to veto a slashing request
-     * @param largeSlashingRequest the LSR to veto
+     * @param slashingRequest the LSR to veto
      * @dev only callable by the veto committee
      */
-    function vetoLargeSlashingRequest(SlashingRequest calldata largeSlashingRequest) external {
-        require(msg.sender == vetoCommittee, "SlashingManager.vetoLargeSlashingRequest: only veto committee can veto");
-        require(vetoableAVSs[largeSlashingRequest.avs], "SlashingManager.vetoLargeSlashingRequest: AVS not vetoable");
-        require(largeSlashingRequest.requestType == SlashingRequestType.LARGE, "SlashingManager.vetoLargeSlashingRequest: only large slashing requests can be vetoed");
-        require(_inVetoPeriodForTime(largeSlashingRequest.blockTimestamp), "SlashingManager.vetoLargeSlashingRequest: not in veto period");
+    function vetoSlashingRequest(SlashingRequest calldata slashingRequest) external {
+        require(msg.sender == vetoCommittee, "SlashingManager.vetoSlashingRequest: only veto committee can veto");
+        require(vetoableAVSs[slashingRequest.avs], "SlashingManager.vetoSlashingRequest: AVS not vetoable");
+        require(slashingRequest.requestType == SlashingRequestType.VETOABLE, "SlashingManager.vetoSlashingRequest: only vetoable slashing requests can be vetoed");
+        require(_inVetoPeriodForTime(slashingRequest.blockTimestamp), "SlashingManager.vetoSlashingRequest: not in veto period");
 
-        uint32 requestEpoch = _getEpochFromTimestamp(largeSlashingRequest.blockTimestamp);
+        uint32 requestEpoch = _getEpochFromTimestamp(slashingRequest.blockTimestamp);
         // Get the status of the slashing request
-        bytes32 requestHash = keccak256(abi.encode(largeSlashingRequest));
-        require(slashingRequestStatuses[requestHash] == SlashingRequestStatus.PENDING, "SlashingManager.vetoLargeSlashingRequest: slashing request not pending");
+        bytes32 requestHash = keccak256(abi.encode(slashingRequest));
+        require(slashingRequestStatuses[requestHash] == SlashingRequestStatus.PENDING, "SlashingManager.vetoSlashingRequest: slashing request not pending");
         
         // subtract bipsPendingSlashing
-        for (uint256 i = 0; i < largeSlashingRequest.strategies.length; i++) {
-            _decrementBipsPendingSlashing(largeSlashingRequest.avs, largeSlashingRequest.operator, largeSlashingRequest.strategies[i], requestEpoch, largeSlashingRequest.bipsToSlash[i]);
+        for (uint256 i = 0; i < slashingRequest.strategies.length; i++) {
+            _decrementBipsPendingVetoableSlashing(slashingRequest.avs, slashingRequest.operator, slashingRequest.strategies[i], requestEpoch, slashingRequest.bipsToSlash[i]);
         }
 
         slashingRequestStatuses[requestHash] = SlashingRequestStatus.VETOED;
     }
 
     /**
-     * @notice Permissionlessly called to execute an LSR
-     * @param largeSlashingRequest the LSR to execute
+     * @notice Permissionlessly called to execute a slashing request
+     * @param slashingRequest the slashing request to execute
      * @dev permissionlessly callable
      */
-    function executeLargeSlashingRequest(SlashingRequest calldata largeSlashingRequest) external returns(uint16[] memory) {
-        require(largeSlashingRequest.requestType == SlashingRequestType.LARGE, "SlashingManager.executeLargeSlashingRequest: only large slashing requests can be executed");
-        require(_inExecutionPeriodForTime(largeSlashingRequest.blockTimestamp), "SlashingManager.executeLargeSlashingRequest: not in execution period");
+    function executeSlashingRequest(SlashingRequest calldata slashingRequest) external returns(uint16[] memory) {
+        require(_inExecutionPeriodForTime(slashingRequest.blockTimestamp), "SlashingManager.executeSlashingRequest: not in execution period");
 
-        uint16[] memory bipsSlashed = new uint16[](largeSlashingRequest.strategies.length);
+        uint16[] memory bipsSlashed = new uint16[](slashingRequest.strategies.length);
 
-        uint32 requestEpoch = _getEpochFromTimestamp(largeSlashingRequest.blockTimestamp);
+        uint32 requestEpoch = _getEpochFromTimestamp(slashingRequest.blockTimestamp);
         // Get the status of the slashing request
-        bytes32 requestHash = keccak256(abi.encode(largeSlashingRequest));
-        require(slashingRequestStatuses[requestHash] == SlashingRequestStatus.PENDING, "SlashingManager.executeLargeSlashingRequest: slashing request not pending");
+        bytes32 requestHash = keccak256(abi.encode(slashingRequest));
+        require(slashingRequestStatuses[requestHash] == SlashingRequestStatus.PENDING, "SlashingManager.executeSlashingRequest: slashing request not pending");
 
         // Get bips left to slash
-        for (uint256 i = 0; i < largeSlashingRequest.strategies.length; i++) {
-            uint16 bipsToSlash = MAX_BIPS - slashingsForOperator[largeSlashingRequest.operator][largeSlashingRequest.strategies[i]][requestEpoch].bipsSlashed;
+        for (uint256 i = 0; i < slashingRequest.strategies.length; i++) {
+            uint16 bipsToSlash = MAX_BIPS - slashingsForOperator[slashingRequest.operator][slashingRequest.strategies[i]][requestEpoch].bipsSlashed;
             if (bipsToSlash == 0) {
                 continue;
             }
 
             // Truncate the bips to slash if it exceeds the remaining bips that can be slashed
-            if (bipsToSlash > largeSlashingRequest.bipsToSlash[i]) {
-                bipsToSlash = largeSlashingRequest.bipsToSlash[i];
+            if (bipsToSlash > slashingRequest.bipsToSlash[i]) {
+                bipsToSlash = slashingRequest.bipsToSlash[i];
             }
             bipsSlashed[i] = bipsToSlash;
 
             // increment the number of bips slashed
-            _decrementBipsPendingSlashing(largeSlashingRequest.avs, largeSlashingRequest.operator, largeSlashingRequest.strategies[i], requestEpoch, bipsToSlash);
-            _incrementBipsSlashed(largeSlashingRequest.avs, largeSlashingRequest.operator, largeSlashingRequest.strategies[i], requestEpoch, bipsToSlash);
+            _decrementBipsPendingVetoableSlashing(slashingRequest.avs, slashingRequest.operator, slashingRequest.strategies[i], requestEpoch, bipsToSlash);
+            _incrementBipsSlashed(slashingRequest.avs, slashingRequest.operator, slashingRequest.strategies[i], requestEpoch, bipsToSlash);
         }
 
         // TODO: Execute the slashing request
@@ -221,20 +201,19 @@ abstract contract SlashingManager is ISlashingManager {
         return bipsSlashed;
     }
 
-    function _incrementBipsPendingSlashingViaSSRs(address avs, address operator, IStrategy strategy, uint32 epoch, uint16 bipsToSlash) internal {
-        slashingsForOperator[operator][strategy][epoch].bipsPendingSlashingViaSSRs += bipsToSlash;
-        slashingsForAVSAndOperator[avs][operator][strategy][epoch].bipsPendingSlashingViaSSRs += bipsToSlash;
-        _incrementBipsPendingSlashing(avs, operator, strategy, epoch, bipsToSlash);
+    function _incrementBipsPendingNonvetoableSlashing(address avs, address operator, IStrategy strategy, uint32 epoch, uint16 bipsToSlash) internal {
+        slashingsForOperator[operator][strategy][epoch].bipsPendingNonvetoableSlashing += bipsToSlash;
+        slashingsForAVSAndOperator[avs][operator][strategy][epoch].bipsPendingNonvetoableSlashing += bipsToSlash;
     }
 
-    function _incrementBipsPendingSlashing(address avs, address operator, IStrategy strategy, uint32 epoch, uint16 bipsToSlash) internal {
-        slashingsForOperator[operator][strategy][epoch].bipsPendingSlashing += bipsToSlash;
-        slashingsForAVSAndOperator[avs][operator][strategy][epoch].bipsPendingSlashing += bipsToSlash;
+    function _incrementBipsPendingVetoableSlashing(address avs, address operator, IStrategy strategy, uint32 epoch, uint16 bipsToSlash) internal {
+        slashingsForOperator[operator][strategy][epoch].bipsPendingVetoableSlashing += bipsToSlash;
+        slashingsForAVSAndOperator[avs][operator][strategy][epoch].bipsPendingVetoableSlashing += bipsToSlash;
     }
 
-    function _decrementBipsPendingSlashing(address avs, address operator, IStrategy strategy, uint32 epoch, uint16 bipsToSlash) internal {
-        slashingsForOperator[operator][strategy][epoch].bipsPendingSlashing -= bipsToSlash;
-        slashingsForAVSAndOperator[avs][operator][strategy][epoch].bipsPendingSlashing -= bipsToSlash;
+    function _decrementBipsPendingVetoableSlashing(address avs, address operator, IStrategy strategy, uint32 epoch, uint16 bipsToSlash) internal {
+        slashingsForOperator[operator][strategy][epoch].bipsPendingVetoableSlashing -= bipsToSlash;
+        slashingsForAVSAndOperator[avs][operator][strategy][epoch].bipsPendingVetoableSlashing -= bipsToSlash;
     }
 
     function _incrementBipsSlashed(address avs, address operator, IStrategy strategy, uint32 epoch, uint16 bipsToSlash) internal {
@@ -243,18 +222,18 @@ abstract contract SlashingManager is ISlashingManager {
     }
 
     // TODO: get if we're in the veto period for timestamp
-    function _inVetoPeriodForTime(uint32 timestamp) internal view returns(bool) {
-        return false;
+    function _inVetoPeriodForTime(uint32 timestamp) internal pure returns(bool) {
+        return timestamp == 69;
     }
 
     // TODO: get if we're in the execution period for timestamp
-    function _inExecutionPeriodForTime(uint32 timestamp) internal view returns(bool) {
-        return false;
+    function _inExecutionPeriodForTime(uint32 timestamp) internal pure returns(bool) {
+        return timestamp == 69;
     }
 
     // TODO: get epoch from timestamp
-    function _getEpochFromTimestamp(uint32 timestamp) internal view returns(uint32) {
-        return uint32(block.timestamp / 14 days);
+    function _getEpochFromTimestamp(uint32 timestamp) internal pure returns(uint32) {
+        return uint32(timestamp / 14 days);
     }
 
     // TODO: implement this function

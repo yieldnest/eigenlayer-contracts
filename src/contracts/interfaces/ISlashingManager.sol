@@ -13,8 +13,8 @@ interface ISlashingManager {
 
     enum SlashingRequestType {
         NULL,
-        SMALL,
-        LARGE
+        NONVETOABLE,
+        VETOABLE
     }
 
     struct SlashingRequestParams {
