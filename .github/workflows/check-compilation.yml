@@ -1,0 +1,24 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  commitlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Install dependencies
+        run: |
+          apt-get update
+          apt-get install -y golang-1.22 make curl git
+          curl -L https://foundry.paradigm.xyz | bash
+          source ~/.bashrc
+
+      - name: Build and validate
+        if: github.event_name == 'push'
+        run: |
+          foundryup
+          make bindings
+          if [ ! -z "$(git status --porcelain)" ]; then git diff; git status; exit 1; fi

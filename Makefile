@@ -3,7 +3,7 @@
 deps:
 	brew install libusb
 	curl -L https://foundry.paradigm.xyz | bash
-	foundry up
+	foundryup
 
 .PHONY: compile
 compile:
