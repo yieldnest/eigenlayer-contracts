@@ -1,6 +1,6 @@
 #!/bin/bash
 
-BINDING_DIR=./pgk/bindings
+BINDING_DIR=./pkg/bindings
 JSON_DIR=./out
 
 function create_binding {
