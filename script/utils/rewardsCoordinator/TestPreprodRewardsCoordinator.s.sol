@@ -262,31 +262,31 @@ contract TestPreprodRewardsCoordinator is ExistingDeploymentParser {
         forge script script/utils/rewardsCoordinator/TestPreprodRewardsCoordinator.s.sol:TestPreprodRewardsCoordinator \
             --rpc-url $RPC_HOLESKY --private-key $PRIVATE_KEY --broadcast -vvvv \
             --sig " "payForAll(string memory startTimestampType, address paymentTokenAddress, uint256 amount)" \
-            "genesis" 0x0000000000000000000000000000000000000000 1000000000000000000000000000000
+            "genesis" 0x002b273D4459B5636F971CC7bE6443E95517d394 1000000000000000000000000000
      */
     function payForAll(
         string memory startTimestampType,
         address paymentTokenAddress,
         uint256 amount
     ) external {
-        _setupScript();
+        // _setupScript();
 
         uint256 mockTokenInitialSupply = 1e32;
         uint32 startTimestamp;
         uint32 duration;
 
-        IERC20 paymentToken = IERC20(paymentTokenAddress);
-        // if paymentToken is address(0) deploy a new mocktoken
-        if (paymentTokenAddress == address(0)) {
-            vm.startBroadcast();
-            paymentToken = new ERC20PresetFixedSupply(
-                "mockpayment token",
-                "MOCK1",
-                mockTokenInitialSupply,
-                msg.sender
-            );
-            vm.stopBroadcast();
-        }
+        IERC20 paymentToken = IERC20(0xdeeeeE2b48C121e6728ed95c860e296177849932);
+        // // if paymentToken is address(0) deploy a new mocktoken
+        // if (paymentTokenAddress == address(0)) {
+        //     vm.startBroadcast();
+        //     paymentToken = new ERC20PresetFixedSupply(
+        //         "mockpayment token",
+        //         "MOCK1",
+        //         mockTokenInitialSupply,
+        //         msg.sender
+        //     );
+        //     vm.stopBroadcast();
+        // }
 
         if (keccak256(abi.encode(startTimestampType)) == keccak256(abi.encode("genesis"))) {
             /// 1710979200 unix timestamp, genesis at March 21st
@@ -294,36 +294,71 @@ contract TestPreprodRewardsCoordinator is ExistingDeploymentParser {
             duration = 10 weeks;
         } else if (keccak256(abi.encode(startTimestampType)) == keccak256(abi.encode("current"))) {
             /// 1715212800 unix timestamp, May 9th
-            startTimestamp = REWARDS_COORDINATOR_GENESIS_REWARDS_TIMESTAMP + 11 weeks;
-            duration = 3 weeks;
+            startTimestamp = REWARDS_COORDINATOR_GENESIS_REWARDS_TIMESTAMP + 10 weeks;
+            duration = 9 weeks;
         } else if (keccak256(abi.encode(startTimestampType)) == keccak256(abi.encode("future"))) {
             /// 1715817600 unix timestamp, May 16th
             startTimestamp = REWARDS_COORDINATOR_GENESIS_REWARDS_TIMESTAMP + 8 weeks;
             duration = 2 weeks;
         }
 
-        IRewardsCoordinator.StrategyAndMultiplier[] memory strategiesAndMultipliers = new IRewardsCoordinator.StrategyAndMultiplier[](2);
+        IRewardsCoordinator.StrategyAndMultiplier[] memory strategiesAndMultipliers = new IRewardsCoordinator.StrategyAndMultiplier[](11);
         strategiesAndMultipliers[0] = IRewardsCoordinator.StrategyAndMultiplier({
-            strategy: wethStrategy,
+            strategy: IStrategy(0x05037A81BD7B4C9E0F7B430f1F2A22c31a2FD943),
             multiplier: 1e18
         });
         strategiesAndMultipliers[1] = IRewardsCoordinator.StrategyAndMultiplier({
-            strategy: eigenStrategy,
-            multiplier: 2e18
+            strategy: IStrategy(0x31B6F59e1627cEfC9fA174aD03859fC337666af7),
+            multiplier: 1e18
         });
-
+        strategiesAndMultipliers[2] = IRewardsCoordinator.StrategyAndMultiplier({
+            strategy: IStrategy(0x3A8fBdf9e77DFc25d09741f51d3E181b25d0c4E0),
+            multiplier: 1e18
+        });
+        strategiesAndMultipliers[3] = IRewardsCoordinator.StrategyAndMultiplier({
+            strategy: IStrategy(0x46281E3B7fDcACdBa44CADf069a94a588Fd4C6Ef),
+            multiplier: 1e18
+        });
+        strategiesAndMultipliers[4] = IRewardsCoordinator.StrategyAndMultiplier({
+            strategy: IStrategy(0x70EB4D3c164a6B4A5f908D4FBb5a9cAfFb66bAB6),
+            multiplier: 1e18
+        });
+        strategiesAndMultipliers[5] = IRewardsCoordinator.StrategyAndMultiplier({
+            strategy: IStrategy(0x7673a47463F80c6a3553Db9E54c8cDcd5313d0ac),
+            multiplier: 1e18
+        });
+        strategiesAndMultipliers[6] = IRewardsCoordinator.StrategyAndMultiplier({
+            strategy: IStrategy(0x7D704507b76571a51d9caE8AdDAbBFd0ba0e63d3),
+            multiplier: 1e18
+        });
+        strategiesAndMultipliers[7] = IRewardsCoordinator.StrategyAndMultiplier({
+            strategy: IStrategy(0x80528D6e9A2BAbFc766965E0E26d5aB08D9CFaF9),
+            multiplier: 1e18
+        });
+        strategiesAndMultipliers[8] = IRewardsCoordinator.StrategyAndMultiplier({
+            strategy: IStrategy(0x9281ff96637710Cd9A5CAcce9c6FAD8C9F54631c),
+            multiplier: 1e18
+        });
+        strategiesAndMultipliers[9] = IRewardsCoordinator.StrategyAndMultiplier({
+            strategy: IStrategy(0xaccc5A86732BE85b5012e8614AF237801636F8e5),
+            multiplier: 1e18
+        });
+        strategiesAndMultipliers[10] = IRewardsCoordinator.StrategyAndMultiplier({
+            strategy: IStrategy(0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0),
+            multiplier: 1e18
+        });
         IRewardsCoordinator.RewardsSubmission[] memory rewardsSubmissions = new IRewardsCoordinator.RewardsSubmission[](1);
         rewardsSubmissions[0] = IRewardsCoordinator.RewardsSubmission({
             strategiesAndMultipliers: strategiesAndMultipliers,
             token: paymentToken,
             amount: amount,
-            startTimestamp: startTimestamp,
-            duration: duration
+            startTimestamp: 1717027200,
+            duration: 9 weeks
         });
 
         vm.startBroadcast();
-        paymentToken.approve(address(rewardsCoordinator), amount);
-        rewardsCoordinator.createRewardsForAllSubmission(rewardsSubmissions);
+        paymentToken.approve(address(0xAcc1fb458a1317E886dB376Fc8141540537E68fE), amount);
+        IRewardsCoordinator(0xAcc1fb458a1317E886dB376Fc8141540537E68fE).createRewardsForAllSubmission(rewardsSubmissions);
         vm.stopBroadcast();
     }
 
@@ -643,6 +678,24 @@ contract TestPreprodRewardsCoordinator is ExistingDeploymentParser {
     function deployStablecoin() external virtual {
         vm.startBroadcast();
         TestStablecoin stablecoin = new TestStablecoin();
+        vm.stopBroadcast();
+    }
+
+    /**
+        ========HOLESKY========
+        forge script script/utils/rewardsCoordinator/TestPreprodRewardsCoordinator.s.sol:TestPreprodRewardsCoordinator \
+            --rpc-url $RPC_HOLESKY --private-key $PRIVATE_KEY --broadcast -vvvv \
+            --sig "deployEigenINU()"
+     */
+    function deployEigenINU() external virtual {
+        vm.startBroadcast();
+        uint256 mockTokenInitialSupply = 69420e28;
+        IERC20 paymentToken = new ERC20PresetFixedSupply(
+            "EigenInu",
+            "EINU",
+            mockTokenInitialSupply,
+            msg.sender
+        );
         vm.stopBroadcast();
     }
 }
