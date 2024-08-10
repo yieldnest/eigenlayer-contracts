@@ -40,6 +40,7 @@ contract Deployer_M2 is Script, Test {
         uint256 maxDeposits;
         uint256 maxPerDeposit;
         address tokenAddress;
+        string tokenName;
         string tokenSymbol;
     }
 
@@ -300,6 +301,9 @@ contract Deployer_M2 is Script, Test {
         baseStrategyImplementation = new StrategyBaseTVLLimits(strategyManager);
         // create upgradeable proxies that each point to the implementation and initialize them
         for (uint256 i = 0; i < strategyConfigs.length; ++i) {
+            if (strategyConfigs[i].tokenAddress == address(0)) {
+                strategyConfigs[i].tokenAddress = address(new ERC20PresetFixedSupply(strategyConfigs[i].tokenName, strategyConfigs[i].tokenSymbol, uint256(type(uint128).max), executorMultisig));
+            }
             deployedStrategyArray.push(
                 StrategyBaseTVLLimits(
                     address(
