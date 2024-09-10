@@ -296,7 +296,7 @@ contract TransactionBuilder is ExistingDeploymentParser {
         }
     }
 
-    function depositStakers(uint256 startStaker, uint256 endStaker) external parseState {
+    function depositStakersSingleStrat(uint256 startStaker, uint256 endStaker) external parseState {
         uint256 batchSize = 20;
         require ((endStaker - startStaker) % batchSize == 0, "Batch size must be a factor of the total stakers");
 
@@ -307,7 +307,7 @@ contract TransactionBuilder is ExistingDeploymentParser {
             tokens[i] = IERC20(strategies[i].underlyingToken());
         }
 
-        for(uint256 i = startStaker; i <= endStaker; i += batchSize) {
+        for(uint256 i = startStaker; i < endStaker; i += batchSize) {
             TransactionSubmitter.StakerDeposit[] memory deposits = new TransactionSubmitter.StakerDeposit[](batchSize);
 
             for(uint256 j = 0; j < batchSize; j++){
@@ -345,10 +345,128 @@ contract TransactionBuilder is ExistingDeploymentParser {
             vm.stopBroadcast();
         }
     }
+
+    function depositStakersMultiStrat(uint256 startStaker, uint256 endStaker) external parseState {
+        uint256 batchSize = 10;
+        // require ((endStaker - startStaker) % batchSize == 0, "Batch size must be a factor of the total stakers");
+
+        // Get strategies
+        IStrategy[] memory strategies = transactionSubmitter.getAllStrategies();
+        IERC20[] memory tokens = new IERC20[](strategies.length);
+        for(uint256 i = 0; i < strategies.length; i++){
+            tokens[i] = IERC20(strategies[i].underlyingToken());
+        }
+
+        for(uint256 i = startStaker; i < endStaker; i += batchSize) {
+            TransactionSubmitter.StakerDeposit[] memory deposits = new TransactionSubmitter.StakerDeposit[](batchSize);
+
+            for(uint256 j = 0; j < batchSize; j++){
+                // Get key/address
+                uint256 stakerPrivateKey = vm.deriveKey(MNEMONIC, uint32(i + j));
+                address staker = vm.addr(stakerPrivateKey);
+
+                // Get random number of strategies to deposit for staker
+                uint256 numStrategies = vm.randomUint(2, 4);
+
+                // Initialize struct params
+                TransactionSubmitter.StrategyInfo[] memory strategyInfos = new TransactionSubmitter.StrategyInfo[](numStrategies);
+
+                uint256 nonce = strategyManager.nonces(staker);
+
+                for (uint256 k = 0; k < numStrategies; k++) {
+                    // Get random strategy
+                    uint256 strategyIndex = vm.randomUint(1, strategies.length - 1);
+                    IStrategy strategy = strategies[strategyIndex];
+                    IERC20 token = tokens[strategyIndex];
+
+                    // Get random amount
+                    uint256 amount = vm.randomUint(1, 25_000_000e18);
+
+                    // Get StakerInfo
+                    strategyInfos[k] = _getStakerStrategyInfoManualNonce(
+                        stakerPrivateKey,
+                        staker,
+                        strategy,
+                        token,
+                        amount,
+                        nonce
+                    );
+
+                    nonce++;
+                }
+
+                deposits[j] = TransactionSubmitter.StakerDeposit({
+                    strategyInfos: strategyInfos
+                });
+            }
+
+            vm.startBroadcast();
+            transactionSubmitter.depositStakers(deposits);
+            vm.stopBroadcast();
+        }
+    }
+
+    function depositStakerByIndex(uint32 index) external parseState {
+            // Get strategies
+            IStrategy[] memory strategies = transactionSubmitter.getAllStrategies();
+            IERC20[] memory tokens = new IERC20[](strategies.length);
+            for(uint256 i = 0; i < strategies.length; i++){
+                tokens[i] = IERC20(strategies[i].underlyingToken());
+            }
+
+            // Initialize struct params
+            TransactionSubmitter.StrategyInfo[] memory strategyInfo = new TransactionSubmitter.StrategyInfo[](1);
+
+            // Get key/address
+            uint256 stakerPrivateKey = vm.deriveKey(MNEMONIC, uint32(index));
+            address staker = vm.addr(stakerPrivateKey);
+
+            // Get random strategy
+            uint256 strategyIndex = vm.randomUint(1, strategies.length - 1);
+            IStrategy strategy = strategies[strategyIndex];
+            IERC20 token = tokens[strategyIndex];
+
+            // Get random amount
+            uint256 amount = vm.randomUint(1, 25_000_000e18);
+
+            // Get StakerInfo
+            strategyInfo[0] = _getStakerStrategyInfo(
+                stakerPrivateKey,
+                staker,
+                strategy,
+                token,
+                amount
+            );
+
+            TransactionSubmitter.StakerDeposit[] memory deposits = new TransactionSubmitter.StakerDeposit[](1);
+
+            deposits[0] = TransactionSubmitter.StakerDeposit({
+                strategyInfos: strategyInfo
+            });
+
+            vm.startBroadcast();
+            transactionSubmitter.depositStakers(deposits);
+            vm.stopBroadcast();
+    }
     
     function deployAVSs() external parseState {
         vm.startBroadcast();
         transactionSubmitter.deployAVSs(maxAVSIndex);
+        vm.stopBroadcast();
+    }
+
+    function delegateByIndex(uint32 stakerIndex, uint32 operatorIndex) external parseState {
+        (address staker, uint256 stakerPrivateKey) = deriveRememberKey(MNEMONIC, stakerIndex);
+
+        vm.startBroadcast();
+        staker.call{value: 0.0003 ether}("");
+        vm.stopBroadcast();
+        
+        address operator = vm.addr(vm.deriveKey(MNEMONIC, operatorIndex));
+        ISignatureUtils.SignatureWithExpiry memory approverSignatureAndExpiry;
+
+        vm.startBroadcast(staker);
+        delegationManager.delegateTo(operator, approverSignatureAndExpiry, "");
         vm.stopBroadcast();
     }
 
@@ -478,14 +596,14 @@ contract TransactionBuilder is ExistingDeploymentParser {
 
     bytes32 public constant DOMAIN_SEPARATOR_SM = 0xcd2248fa45cb388d7d043522f71c7934b72e935295a7e04afdf7794a7bf18df2;
 
-    function _getStakerStrategyInfo(
+    function _getStakerStrategyInfoManualNonce(
         uint256 stakerPrivateKey,
         address staker,
         IStrategy strategy,
         IERC20 token,
-        uint256 amount
+        uint256 amount,
+        uint256 nonce
     ) internal view returns (TransactionSubmitter.StrategyInfo memory strategyInfo) {
-        uint256 nonce = strategyManager.nonces(staker);
         uint256 expiry = type(uint32).max;
         bytes memory signature;
         {
@@ -507,6 +625,16 @@ contract TransactionBuilder is ExistingDeploymentParser {
             expiry: expiry,
             signature: signature
         });
+    }
+
+    function _getStakerStrategyInfo(
+        uint256 stakerPrivateKey,
+        address staker,
+        IStrategy strategy,
+        IERC20 token,
+        uint256 amount
+    ) internal view returns (TransactionSubmitter.StrategyInfo memory strategyInfo) {
+        return _getStakerStrategyInfoManualNonce(stakerPrivateKey, staker, strategy, token, amount, strategyManager.nonces(staker));
     }
 
     function _getOperatorIndexFirstHalf(uint256 stakerIndex) internal returns (uint256) {
@@ -533,5 +661,15 @@ contract TransactionBuilder is ExistingDeploymentParser {
         vm.startBroadcast();
         stratFactory.whitelistStrategies(strategies, thirdPartyTransfersForbiddenValues);
         vm.stopBroadcast();
+    }
+
+    function addAddressToJSON() external parseState {
+        // string memory key = "addresses";
+        for (uint256 i = 0; i < 51021; i++) {
+            address staker = vm.addr(vm.deriveKey(MNEMONIC, uint32(i)));
+            // Add to JSON file
+            emit log_named_address("Staker", staker);
+        }
+        // vm.writeJson(vm.serializeString(key, "", ""), "script/utils/rewards_testing/addresses.json");
     }
 } 
