@@ -122,6 +122,28 @@ contract TransactionBuilder is ExistingDeploymentParser {
         }
     }
 
+    function registerOperatorsToAVSsByIndex(uint32 operatorIndex) external parseState {
+        address[] memory avss = transactionSubmitter.getAllAVSs();
+
+        (address operator, uint256 privateKey) = deriveRememberKey(MNEMONIC, uint32(operatorIndex));
+
+        // Get number of avss to register
+        address[] memory avssToRegister = _getRandomAVSs(avss);
+        ISignatureUtils.SignatureWithSaltAndExpiry[] memory signatures = _getOperatorSignatures(privateKey, operator, avssToRegister);              
+        
+        // Push currRegistration to registrations
+        TransactionSubmitter.OperatorAVSRegistration[] memory registrations = new TransactionSubmitter.OperatorAVSRegistration[](1);
+        registrations[0] = TransactionSubmitter.OperatorAVSRegistration({
+            operator: operator,
+            avss: avssToRegister,
+            sigs: signatures
+        });
+
+        vm.startBroadcast();
+        transactionSubmitter.registerOperatorsToAVSs(registrations);
+        vm.stopBroadcast();
+    }
+
     /**
      * @notice Deploys TransactionSubmitter contract based on existing network config file
      */
@@ -251,6 +273,24 @@ contract TransactionBuilder is ExistingDeploymentParser {
         vm.stopBroadcast();
     }
 
+    function undelegateStakers(uint32 startIndex, uint32 endIndex) external parseState {
+        for (uint32 i = startIndex; i <= endIndex; i++) {
+            (address staker, uint256 stakerPrivateKey) = deriveRememberKey(MNEMONIC, i);
+
+            if (!delegationManager.isDelegated(staker)) {
+                continue;
+            }
+
+            vm.startBroadcast();
+            staker.call{value: 0.0003 ether}("");
+            vm.stopBroadcast();
+
+            vm.startBroadcast(staker);
+            delegationManager.undelegate(staker);
+            vm.stopBroadcast();
+        }
+    }
+
     function delegateSecondHalfOfStakers() external parseState {
         uint256 firstStaker = firstHalfStakerIndex + 1 + 2080;
         uint256 lastStaker = maxStakerIndex;
@@ -347,7 +387,7 @@ contract TransactionBuilder is ExistingDeploymentParser {
     }
 
     function depositStakersMultiStrat(uint256 startStaker, uint256 endStaker) external parseState {
-        uint256 batchSize = 10;
+        uint256 batchSize = 1;
         // require ((endStaker - startStaker) % batchSize == 0, "Batch size must be a factor of the total stakers");
 
         // Get strategies
@@ -455,8 +495,12 @@ contract TransactionBuilder is ExistingDeploymentParser {
         vm.stopBroadcast();
     }
 
-    function delegateByIndex(uint32 stakerIndex, uint32 operatorIndex) external parseState {
+    function delegateByIndex(uint32 stakerIndex, uint32 operatorIndex) public parseState {
         (address staker, uint256 stakerPrivateKey) = deriveRememberKey(MNEMONIC, stakerIndex);
+        
+        if (delegationManager.isDelegated(staker)) {
+            return;
+        }
 
         vm.startBroadcast();
         staker.call{value: 0.0003 ether}("");
@@ -467,6 +511,52 @@ contract TransactionBuilder is ExistingDeploymentParser {
 
         vm.startBroadcast(staker);
         delegationManager.delegateTo(operator, approverSignatureAndExpiry, "");
+        vm.stopBroadcast();
+    }
+
+    function delegateByIndexMultiple(uint32 stakerIndex, uint32 numberStaker, uint32 operatorIndex) public parseState {
+        for(uint32 i = 0; i < numberStaker; i++){
+
+            delegateByIndex(stakerIndex + i, operatorIndex);
+        }
+    }
+
+    function completeAndDelegate(uint32 stakerIndex, uint32 operatorIndex) public parseState {
+        IStrategy[] memory strategies = new IStrategy[](1);
+        uint256[] memory shares = new uint256[](1);
+        IERC20[] memory tokens = new IERC20[](1);
+        strategies[0] = IStrategy(0x77335a08a877cd874165bDC766feeD951a0d84c8);
+        shares[0] = 4157021384921519315796965;
+        tokens[0] = IERC20(0x4Ce198f835e3f0bb18D4775946fd87f5654B0b49);
+
+        IDelegationManager.Withdrawal memory withdrawal = IDelegationManager.Withdrawal({
+            staker: 0xc17e7649c237013603BeD09Be3647d23575a1042,
+            delegatedTo: 0x4e1Efdbb25446Aa7C9fAc4731BE159b650E9eE5f,
+            withdrawer: 0xc17e7649c237013603BeD09Be3647d23575a1042,
+            nonce: 0,
+            startBlock: 2329626,
+            strategies: strategies,
+            shares: shares
+        });
+
+        
+        (address staker, uint256 stakerPrivateKey) = deriveRememberKey(MNEMONIC, stakerIndex);
+
+        vm.startBroadcast(staker);
+        delegationManager.completeQueuedWithdrawal(
+            withdrawal,
+            tokens,
+            0,
+            false
+        );
+        delegationManager.delegateTo(
+            vm.addr(vm.deriveKey(MNEMONIC, operatorIndex)),
+            ISignatureUtils.SignatureWithExpiry({
+                signature: "",
+                expiry: 0
+            }),
+            ""
+        );
         vm.stopBroadcast();
     }
 
@@ -671,5 +761,13 @@ contract TransactionBuilder is ExistingDeploymentParser {
             emit log_named_address("Staker", staker);
         }
         // vm.writeJson(vm.serializeString(key, "", ""), "script/utils/rewards_testing/addresses.json");
+    }
+
+    function printPrivateKey(uint256 index) external parseState {
+        (address addr, uint256 privateKey) = deriveRememberKey(MNEMONIC, uint32(index));
+        emit log_named_uint("Private Key", privateKey);
+        emit log_named_address("Address", addr);
+        // Encoded private key (in hex)
+        // emit log_named_string("Private Key (hex)", abi.encodePacked(privateKey).toHexString());
     }
 } 
