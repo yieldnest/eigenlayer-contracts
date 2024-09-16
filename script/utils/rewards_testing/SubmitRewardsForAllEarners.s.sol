@@ -143,10 +143,10 @@ contract SubmitRewardsForAllEarners is ExistingDeploymentParser {
         _submitRewardsForAllEarners(rewardsSubmission);
     }
 
-    function tx_5() public parseState {
+    function tx_8() public parseState {
         // Deploy token 
-        string memory name = "RewardForAllEarner_Test_5";
-        string memory symbol = "RFA_5";
+        string memory name = "RewardForAllEarner_Test_8";
+        string memory symbol = "RFA_8";
         IERC20 rewardToken = IERC20(_deployToken(name, symbol));
         IRewardsCoordinator.RewardsSubmission[] memory rewardsSubmission = new IRewardsCoordinator.RewardsSubmission[](1);
 
@@ -162,8 +162,8 @@ contract SubmitRewardsForAllEarners is ExistingDeploymentParser {
 
         // Format Range
         uint32 moddedCurrTimestamp = uint32(block.timestamp) - (uint32(block.timestamp) % rewardsCoordinator.CALCULATION_INTERVAL_SECONDS());
-        uint32 startTimestamp = moddedCurrTimestamp - 1 weeks;
-        uint32 duration = 2 weeks;
+        uint32 startTimestamp = 1724889600;
+        uint32 duration = 6 weeks;
 
         rewardsSubmission[0] = IRewardsCoordinator.RewardsSubmission({
             strategiesAndMultipliers: strategyAndMultipliers,
