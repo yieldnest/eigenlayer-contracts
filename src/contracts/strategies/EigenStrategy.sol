@@ -3,6 +3,7 @@ pragma solidity ^0.8.12;
 
 // NOTE: Mainnet uses the OpenZeppelin v4.9.0 contracts, but this imports the 4.7.1 version. This will be changed after an upgrade.
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "./OZ-Votes-v4.9.0.sol";
 import "../interfaces/IStrategyManager.sol";
 import "../strategies/StrategyBase.sol";
 import "../interfaces/IEigen.sol";
@@ -102,4 +103,48 @@ contract EigenStrategy is StrategyBase {
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
     uint256[49] private __gap;
+}
+
+contract EigenStrategyWithVotes is EigenStrategy, Votes {
+
+
+    /// @notice Since this contract is designed to be initializable, the constructor simply sets `strategyManager`, the only immutable variable.
+    constructor(IStrategyManager _strategyManager)
+        EigenStrategy(_strategyManager)
+        EIP712(/* name */ "EigenStrategyWithVotes", /* version */ "1")
+    {}
+
+    /**
+     * @dev Machine-readable description of the clock as specified in EIP-6372.
+     * Has been overridden to inform callers that this contract uses timestamps instead of block numbers, to match `clock()`
+     */
+    // solhint-disable-next-line func-name-mixedcase
+    function CLOCK_MODE() public pure override returns (string memory) {
+        return "mode=timestamp";
+    }
+
+    /**
+     * @dev Must return the voting units held by an account.
+     */
+    function _getVotingUnits(address user) internal view override returns (uint256) {
+        return shares(user);
+    }
+
+    function _beforeWithdrawal(
+        address recipient,
+        IERC20 token,
+        uint256 amountShares
+    ) internal virtual override {
+        // super._beforeWithdrawal(recipient, token, amountShares);
+        require(token == underlyingToken || token == EIGEN, "EigenStrategy.withdraw: Can only withdraw bEIGEN or EIGEN");
+        // NOTE: this assumes that the `recipient` is the address *losing* shares
+        // NOTE: using `amountShares` here may be incompatible with slashing(?)
+        // NOTE: this will underflow if the `recipient` (technically, `delegates(recipient)`) has not previously been given voting power
+        _moveDelegateVotes(delegates(recipient), address(0), amountShares);
+    }
+
+    // TODO: figure out if there is a way to properly increase a user's voting power on deposits -- Strategies currently do not have access to user address on deposit
+    function _updateDelegatedAmount(address user, uint256 newShares) internal {
+        _transferVotingUnits({from: address(0), to: user, amount: newShares});
+    }
 }
