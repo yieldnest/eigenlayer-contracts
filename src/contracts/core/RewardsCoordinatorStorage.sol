@@ -57,17 +57,15 @@ abstract contract RewardsCoordinatorStorage is IRewardsCoordinator {
      */
     DistributionRoot[] internal _distributionRoots;
 
-    /// Slot 3
+    /// Slot 2
     /// @notice The address of the entity that can update the contract with new merkle roots
     address public rewardsUpdater;
     /// @notice Delay in timestamp (seconds) before a posted root can be claimed against
     uint32 public activationDelay;
     /// @notice Timestamp for last submitted DistributionRoot
     uint32 public currRewardsCalculationEndTimestamp;
-
-    /// Slot 4
-    /// @notice the commission for all operators across all avss
-    uint16 public globalOperatorCommissionBips;
+    /// @notice the default split for all operators across all avss in bips.
+    uint16 public defaultOperatorSplitBips;
 
     /// @notice Mapping: earner => the address of the entity who can call `processClaim` on behalf of the earner
     mapping(address => address) public claimerFor;
@@ -75,14 +73,30 @@ abstract contract RewardsCoordinatorStorage is IRewardsCoordinator {
     /// @notice Mapping: earner => token => total amount claimed
     mapping(address => mapping(IERC20 => uint256)) public cumulativeClaimed;
 
-    /// @notice Used for unique rewardsSubmissionHashes per AVS and for RewardsForAllSubmitters
+    /// @notice Used for unique rewardsSubmissionHashes per AVS and for RewardsForAllSubmitters and the tokenHopper
     mapping(address => uint256) public submissionNonce;
+
     /// @notice Mapping: avs => avsRewardsSubmissionHash => bool to check if rewards submission hash has been submitted
     mapping(address => mapping(bytes32 => bool)) public isAVSRewardsSubmissionHash;
-    /// @notice Mapping: avs => rewardsSubmissionForALlHash => bool to check if rewards submission hash for all has been submitted
+
+    /// @notice Mapping: avs => rewardsSubmissionForAllHash => bool to check if rewards submission hash for all has been submitted
     mapping(address => mapping(bytes32 => bool)) public isRewardsSubmissionForAllHash;
+
     /// @notice Mapping: address => bool to check if the address is permissioned to call createRewardsForAllSubmission
     mapping(address => bool) public isRewardsForAllSubmitter;
+
+    /// @notice Mapping: avs => rewardsSubmissionForAllEarnersHash => bool to check
+    /// if rewards submission hash for all stakers and operators has been submitted
+    mapping(address => mapping(bytes32 => bool)) public isRewardsSubmissionForAllEarnersHash;
+
+    /// @notice Mapping: avs => operatorDirectedAVSRewardsSubmissionHash => bool to check if operator-directed rewards submission hash has been submitted
+    mapping(address => mapping(bytes32 => bool)) public isOperatorDirectedAVSRewardsSubmissionHash;
+
+    /// @notice Mapping: operator => avs => OperatorSplit. The split an operator takes for a specific AVS.
+    mapping(address => mapping(address => OperatorSplit)) internal operatorAVSSplitBips;
+
+    /// @notice Mapping: operator => OperatorPISplit. The split an operator takes for Programmatic Incentives.
+    mapping(address => OperatorSplit) internal operatorPISplitBips;
 
     constructor(
         IDelegationManager _delegationManager,
@@ -115,5 +129,5 @@ abstract contract RewardsCoordinatorStorage is IRewardsCoordinator {
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[40] private __gap;
+    uint256[37] private __gap;
 }

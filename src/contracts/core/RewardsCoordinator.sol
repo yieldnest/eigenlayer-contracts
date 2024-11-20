@@ -15,7 +15,7 @@ import "./RewardsCoordinatorStorage.sol";
  * @notice Terms of Service: https://docs.eigenlayer.xyz/overview/terms-of-service
  * @notice  This is the contract for rewards in EigenLayer. The main functionalities of this contract are
  * - enabling any ERC20 rewards from AVSs to their operators and stakers for a given time range
- * - allowing stakers and operators to claim their earnings including a commission bips for operators
+ * - allowing stakers and operators to claim their earnings including a split bips for operators
  * - allowing the protocol to provide ERC20 tokens to stakers over a specified time range
  */
 contract RewardsCoordinator is
@@ -34,6 +34,8 @@ contract RewardsCoordinator is
     uint256 internal immutable ORIGINAL_CHAIN_ID;
     /// @notice The maximum rewards token amount for a single rewards submission, constrained by off-chain calculation
     uint256 internal constant MAX_REWARDS_AMOUNT = 1e38 - 1;
+    /// @notice Equivalent to 100%, but in basis points.
+    uint16 internal constant ONE_HUNDRED_IN_BIPS = 10_000;
 
     /// @dev Index for flag that pauses calling createAVSRewardsSubmission
     uint8 internal constant PAUSED_AVS_REWARDS_SUBMISSION = 0;
@@ -43,6 +45,14 @@ contract RewardsCoordinator is
     uint8 internal constant PAUSED_PROCESS_CLAIM = 2;
     /// @dev Index for flag that pauses submitRoots and disableRoot
     uint8 internal constant PAUSED_SUBMIT_DISABLE_ROOTS = 3;
+    /// @dev Index for flag that pauses calling rewardAllStakersAndOperators
+    uint8 internal constant PAUSED_REWARD_ALL_STAKERS_AND_OPERATORS = 4;
+    /// @dev Index for flag that pauses calling createOperatorDirectedAVSRewardsSubmission
+    uint8 internal constant PAUSED_OPERATOR_DIRECTED_AVS_REWARDS_SUBMISSION = 5;
+    /// @dev Index for flag that pauses calling setOperatorAVSSplit
+    uint8 internal constant PAUSED_OPERATOR_AVS_SPLIT = 6;
+    /// @dev Index for flag that pauses calling setOperatorPISplit
+    uint8 internal constant PAUSED_OPERATOR_PI_SPLIT = 7;
 
     /// @dev Salt for the earner leaf, meant to distinguish from tokenLeaf since they have the same sized data
     uint8 internal constant EARNER_LEAF_SALT = 0;
@@ -91,7 +101,7 @@ contract RewardsCoordinator is
 
     /**
      * @dev Initializes the addresses of the initial owner, pauser registry, rewardsUpdater and
-     * configures the initial paused status, activationDelay, and globalOperatorCommissionBips.
+     * configures the initial paused status, activationDelay, and defaultOperatorSplitBips.
      */
     function initialize(
         address initialOwner,
@@ -99,14 +109,14 @@ contract RewardsCoordinator is
         uint256 initialPausedStatus,
         address _rewardsUpdater,
         uint32 _activationDelay,
-        uint16 _globalCommissionBips
+        uint16 _defaultSplitBips
     ) external initializer {
         _DOMAIN_SEPARATOR = _calculateDomainSeparator();
         _initializePauser(_pauserRegistry, initialPausedStatus);
         _transferOwnership(initialOwner);
         _setRewardsUpdater(_rewardsUpdater);
         _setActivationDelay(_activationDelay);
-        _setGlobalOperatorCommission(_globalCommissionBips);
+        _setDefaultOperatorSplit(_defaultSplitBips);
     }
 
     /**
@@ -115,22 +125,10 @@ contract RewardsCoordinator is
      *
      */
 
-    /**
-     * @notice Creates a new rewards submission on behalf of an AVS, to be split amongst the
-     * set of stakers delegated to operators who are registered to the `avs`
-     * @param rewardsSubmissions The rewards submissions being created
-     * @dev Expected to be called by the ServiceManager of the AVS on behalf of which the submission is being made
-     * @dev The duration of the `rewardsSubmission` cannot exceed `MAX_REWARDS_DURATION`
-     * @dev The tokens are sent to the `RewardsCoordinator` contract
-     * @dev Strategies must be in ascending order of addresses to check for duplicates
-     * @dev This function will revert if the `rewardsSubmission` is malformed,
-     * e.g. if the `strategies` and `weights` arrays are of non-equal lengths
-     */
-    function createAVSRewardsSubmission(RewardsSubmission[] calldata rewardsSubmissions)
-        external
-        onlyWhenNotPaused(PAUSED_AVS_REWARDS_SUBMISSION)
-        nonReentrant
-    {
+    /// @inheritdoc IRewardsCoordinator
+    function createAVSRewardsSubmission(
+        RewardsSubmission[] calldata rewardsSubmissions
+    ) external onlyWhenNotPaused(PAUSED_AVS_REWARDS_SUBMISSION) nonReentrant {
         for (uint256 i = 0; i < rewardsSubmissions.length; i++) {
             RewardsSubmission calldata rewardsSubmission = rewardsSubmissions[i];
             uint256 nonce = submissionNonce[msg.sender];
@@ -146,18 +144,10 @@ contract RewardsCoordinator is
         }
     }
 
-    /**
-     * @notice similar to `createAVSRewardsSubmission` except the rewards are split amongst *all* stakers
-     * rather than just those delegated to operators who are registered to a single avs and is
-     * a permissioned call based on isRewardsForAllSubmitter mapping.
-     * @param rewardsSubmissions The rewards submissions being created
-     */
-    function createRewardsForAllSubmission(RewardsSubmission[] calldata rewardsSubmissions)
-        external
-        onlyWhenNotPaused(PAUSED_REWARDS_FOR_ALL_SUBMISSION)
-        onlyRewardsForAllSubmitter
-        nonReentrant
-    {
+    /// @inheritdoc IRewardsCoordinator
+    function createRewardsForAllSubmission(
+        RewardsSubmission[] calldata rewardsSubmissions
+    ) external onlyWhenNotPaused(PAUSED_REWARDS_FOR_ALL_SUBMISSION) onlyRewardsForAllSubmitter nonReentrant {
         for (uint256 i = 0; i < rewardsSubmissions.length; i++) {
             RewardsSubmission calldata rewardsSubmission = rewardsSubmissions[i];
             uint256 nonce = submissionNonce[msg.sender];
@@ -173,55 +163,83 @@ contract RewardsCoordinator is
         }
     }
 
-    /**
-     * @notice Claim rewards against a given root (read from _distributionRoots[claim.rootIndex]).
-     * Earnings are cumulative so earners don't have to claim against all distribution roots they have earnings for,
-     * they can simply claim against the latest root and the contract will calculate the difference between
-     * their cumulativeEarnings and cumulativeClaimed. This difference is then transferred to recipient address.
-     * @param claim The RewardsMerkleClaim to be processed.
-     * Contains the root index, earner, token leaves, and required proofs
-     * @param recipient The address recipient that receives the ERC20 rewards
-     * @dev only callable by the valid claimer, that is
-     * if claimerFor[claim.earner] is address(0) then only the earner can claim, otherwise only
-     * claimerFor[claim.earner] can claim the rewards.
-     */
+    /// @inheritdoc IRewardsCoordinator
+    function createRewardsForAllEarners(
+        RewardsSubmission[] calldata rewardsSubmissions
+    ) external onlyWhenNotPaused(PAUSED_REWARD_ALL_STAKERS_AND_OPERATORS) onlyRewardsForAllSubmitter nonReentrant {
+        for (uint256 i = 0; i < rewardsSubmissions.length; i++) {
+            RewardsSubmission calldata rewardsSubmission = rewardsSubmissions[i];
+            uint256 nonce = submissionNonce[msg.sender];
+            bytes32 rewardsSubmissionForAllEarnersHash = keccak256(abi.encode(msg.sender, nonce, rewardsSubmission));
+
+            _validateRewardsSubmission(rewardsSubmission);
+
+            isRewardsSubmissionForAllEarnersHash[msg.sender][rewardsSubmissionForAllEarnersHash] = true;
+            submissionNonce[msg.sender] = nonce + 1;
+
+            emit RewardsSubmissionForAllEarnersCreated(
+                msg.sender,
+                nonce,
+                rewardsSubmissionForAllEarnersHash,
+                rewardsSubmission
+            );
+            rewardsSubmission.token.safeTransferFrom(msg.sender, address(this), rewardsSubmission.amount);
+        }
+    }
+
+    /// @inheritdoc IRewardsCoordinator
+    function createOperatorDirectedAVSRewardsSubmission(
+        address avs,
+        OperatorDirectedRewardsSubmission[] calldata operatorDirectedRewardsSubmissions
+    ) external onlyWhenNotPaused(PAUSED_OPERATOR_DIRECTED_AVS_REWARDS_SUBMISSION) nonReentrant {
+        require(
+            msg.sender == avs,
+            "RewardsCoordinator.createOperatorDirectedAVSRewardsSubmission: caller is not the AVS"
+        );
+
+        for (uint256 i = 0; i < operatorDirectedRewardsSubmissions.length; i++) {
+            OperatorDirectedRewardsSubmission
+                calldata operatorDirectedRewardsSubmission = operatorDirectedRewardsSubmissions[i];
+            uint256 nonce = submissionNonce[avs];
+            bytes32 operatorDirectedRewardsSubmissionHash = keccak256(
+                abi.encode(avs, nonce, operatorDirectedRewardsSubmission)
+            );
+
+            uint256 totalAmount = _validateOperatorDirectedRewardsSubmission(operatorDirectedRewardsSubmission);
+
+            isOperatorDirectedAVSRewardsSubmissionHash[avs][operatorDirectedRewardsSubmissionHash] = true;
+            submissionNonce[avs] = nonce + 1;
+
+            emit OperatorDirectedAVSRewardsSubmissionCreated(
+                msg.sender,
+                avs,
+                operatorDirectedRewardsSubmissionHash,
+                nonce,
+                operatorDirectedRewardsSubmission
+            );
+            operatorDirectedRewardsSubmission.token.safeTransferFrom(msg.sender, address(this), totalAmount);
+        }
+    }
+
+    /// @inheritdoc IRewardsCoordinator
     function processClaim(
         RewardsMerkleClaim calldata claim,
         address recipient
     ) external onlyWhenNotPaused(PAUSED_PROCESS_CLAIM) nonReentrant {
-        DistributionRoot memory root = _distributionRoots[claim.rootIndex];
-        _checkClaim(claim, root);
-        // If claimerFor earner is not set, claimer is by default the earner. Else set to claimerFor
-        address earner = claim.earnerLeaf.earner;
-        address claimer = claimerFor[earner];
-        if (claimer == address(0)) {
-            claimer = earner;
-        }
-        require(msg.sender == claimer, "RewardsCoordinator.processClaim: caller is not valid claimer");
-        for (uint256 i = 0; i < claim.tokenIndices.length; i++) {
-            TokenTreeMerkleLeaf calldata tokenLeaf = claim.tokenLeaves[i];
+        _processClaim(claim, recipient);
+    }
 
-            uint256 currCumulativeClaimed = cumulativeClaimed[earner][tokenLeaf.token];
-            require(
-                tokenLeaf.cumulativeEarnings > currCumulativeClaimed,
-                "RewardsCoordinator.processClaim: cumulativeEarnings must be gt than cumulativeClaimed"
-            );
-
-            // Calculate amount to claim and update cumulativeClaimed
-            uint256 claimAmount = tokenLeaf.cumulativeEarnings - currCumulativeClaimed;
-            cumulativeClaimed[earner][tokenLeaf.token] = tokenLeaf.cumulativeEarnings;
-
-            tokenLeaf.token.safeTransfer(recipient, claimAmount);
-            emit RewardsClaimed(root.root, earner, claimer, recipient, tokenLeaf.token, claimAmount);
+    /// @inheritdoc IRewardsCoordinator
+    function processClaims(
+        RewardsMerkleClaim[] calldata claims,
+        address recipient
+    ) external onlyWhenNotPaused(PAUSED_PROCESS_CLAIM) nonReentrant {
+        for (uint256 i = 0; i < claims.length; i++) {
+            _processClaim(claims[i], recipient);
         }
     }
 
-    /**
-     * @notice Creates a new distribution root. activatedAt is set to block.timestamp + activationDelay
-     * @param root The merkle root of the distribution
-     * @param rewardsCalculationEndTimestamp The timestamp until which rewards have been calculated
-     * @dev Only callable by the rewardsUpdater
-     */
+    /// @inheritdoc IRewardsCoordinator
     function submitRoot(
         bytes32 root,
         uint32 rewardsCalculationEndTimestamp
@@ -248,10 +266,7 @@ contract RewardsCoordinator is
         emit DistributionRootSubmitted(rootIndex, root, rewardsCalculationEndTimestamp, activatedAt);
     }
 
-    /**
-     * @notice allow the rewardsUpdater to disable/cancel a pending root submission in case of an error
-     * @param rootIndex The index of the root to be disabled
-     */
+    /// @inheritdoc IRewardsCoordinator
     function disableRoot(uint32 rootIndex) external onlyWhenNotPaused(PAUSED_SUBMIT_DISABLE_ROOTS) onlyRewardsUpdater {
         require(rootIndex < _distributionRoots.length, "RewardsCoordinator.disableRoot: invalid rootIndex");
         DistributionRoot storage root = _distributionRoots[rootIndex];
@@ -261,11 +276,7 @@ contract RewardsCoordinator is
         emit DistributionRootDisabled(rootIndex);
     }
 
-    /**
-     * @notice Sets the address of the entity that can call `processClaim` on behalf of the earner (msg.sender)
-     * @param claimer The address of the entity that can call `processClaim` on behalf of the earner
-     * @dev Only callable by the `earner`
-     */
+    /// @inheritdoc IRewardsCoordinator
     function setClaimerFor(address claimer) external {
         address earner = msg.sender;
         address prevClaimer = claimerFor[earner];
@@ -273,39 +284,50 @@ contract RewardsCoordinator is
         emit ClaimerForSet(earner, prevClaimer, claimer);
     }
 
-    /**
-     * @notice Sets the delay in timestamp before a posted root can be claimed against
-     * @dev Only callable by the contract owner
-     * @param _activationDelay The new value for activationDelay
-     */
+    /// @inheritdoc IRewardsCoordinator
     function setActivationDelay(uint32 _activationDelay) external onlyOwner {
         _setActivationDelay(_activationDelay);
     }
 
-    /**
-     * @notice Sets the global commission for all operators across all avss
-     * @dev Only callable by the contract owner
-     * @param _globalCommissionBips The commission for all operators across all avss
-     */
-    function setGlobalOperatorCommission(uint16 _globalCommissionBips) external onlyOwner {
-        _setGlobalOperatorCommission(_globalCommissionBips);
+    /// @inheritdoc IRewardsCoordinator
+    function setDefaultOperatorSplit(uint16 split) external onlyOwner {
+        _setDefaultOperatorSplit(split);
     }
 
-    /**
-     * @notice Sets the permissioned `rewardsUpdater` address which can post new roots
-     * @dev Only callable by the contract owner
-     * @param _rewardsUpdater The address of the new rewardsUpdater
-     */
+    /// @inheritdoc IRewardsCoordinator
+    function setOperatorAVSSplit(
+        address operator,
+        address avs,
+        uint16 split
+    ) external onlyWhenNotPaused(PAUSED_OPERATOR_AVS_SPLIT) {
+        require(msg.sender == operator, "RewardsCoordinator.setOperatorAVSSplit: caller is not the operator");
+        require(split <= ONE_HUNDRED_IN_BIPS, "RewardsCoordinator.setOperatorAVSSplit: split must be <= 10000 bips");
+
+        uint32 activatedAt = uint32(block.timestamp) + activationDelay;
+        uint16 oldSplit = _getOperatorSplit(operatorAVSSplitBips[operator][avs]);
+        _setOperatorSplit(operatorAVSSplitBips[operator][avs], split, activatedAt);
+
+        emit OperatorAVSSplitBipsSet(msg.sender, operator, avs, activatedAt, oldSplit, split);
+    }
+
+    /// @inheritdoc IRewardsCoordinator
+    function setOperatorPISplit(address operator, uint16 split) external onlyWhenNotPaused(PAUSED_OPERATOR_PI_SPLIT) {
+        require(msg.sender == operator, "RewardsCoordinator.setOperatorPISplit: caller is not the operator");
+        require(split <= ONE_HUNDRED_IN_BIPS, "RewardsCoordinator.setOperatorPISplit: split must be <= 10000 bips");
+
+        uint32 activatedAt = uint32(block.timestamp) + activationDelay;
+        uint16 oldSplit = _getOperatorSplit(operatorPISplitBips[operator]);
+        _setOperatorSplit(operatorPISplitBips[operator], split, activatedAt);
+
+        emit OperatorPISplitBipsSet(msg.sender, operator, activatedAt, oldSplit, split);
+    }
+
+    /// @inheritdoc IRewardsCoordinator
     function setRewardsUpdater(address _rewardsUpdater) external onlyOwner {
         _setRewardsUpdater(_rewardsUpdater);
     }
 
-    /**
-     * @notice Sets the permissioned `rewardsForAllSubmitter` address which can submit createRewardsForAllSubmission
-     * @dev Only callable by the contract owner
-     * @param _submitter The address of the rewardsForAllSubmitter
-     * @param _newValue The new value for isRewardsForAllSubmitter
-     */
+    /// @inheritdoc IRewardsCoordinator
     function setRewardsForAllSubmitter(address _submitter, bool _newValue) external onlyOwner {
         bool prevValue = isRewardsForAllSubmitter[_submitter];
         emit RewardsForAllSubmitterSet(_submitter, prevValue, _newValue);
@@ -319,12 +341,58 @@ contract RewardsCoordinator is
      */
 
     /**
+     * @notice Common checks for all RewardsSubmissions.
+     */
+    function _validateCommonRewardsSubmission(
+        StrategyAndMultiplier[] calldata strategiesAndMultipliers,
+        uint32 startTimestamp,
+        uint32 duration
+    ) internal view {
+        require(
+            strategiesAndMultipliers.length > 0,
+            "RewardsCoordinator._validateCommonRewardsSubmission: no strategies set"
+        );
+        require(
+            duration <= MAX_REWARDS_DURATION,
+            "RewardsCoordinator._validateCommonRewardsSubmission: duration exceeds MAX_REWARDS_DURATION"
+        );
+        require(
+            duration % CALCULATION_INTERVAL_SECONDS == 0,
+            "RewardsCoordinator._validateCommonRewardsSubmission: duration must be a multiple of CALCULATION_INTERVAL_SECONDS"
+        );
+        require(
+            startTimestamp % CALCULATION_INTERVAL_SECONDS == 0,
+            "RewardsCoordinator._validateCommonRewardsSubmission: startTimestamp must be a multiple of CALCULATION_INTERVAL_SECONDS"
+        );
+        require(
+            block.timestamp - MAX_RETROACTIVE_LENGTH <= startTimestamp && GENESIS_REWARDS_TIMESTAMP <= startTimestamp,
+            "RewardsCoordinator._validateCommonRewardsSubmission: startTimestamp too far in the past"
+        );
+
+        // Require reward submission is for whitelisted strategy or beaconChainETHStrategy
+        address currAddress = address(0);
+        for (uint256 i = 0; i < strategiesAndMultipliers.length; ++i) {
+            IStrategy strategy = strategiesAndMultipliers[i].strategy;
+            require(
+                strategyManager.strategyIsWhitelistedForDeposit(strategy) || strategy == beaconChainETHStrategy,
+                "RewardsCoordinator._validateCommonRewardsSubmission: invalid strategy considered"
+            );
+            require(
+                currAddress < address(strategy),
+                "RewardsCoordinator._validateCommonRewardsSubmission: strategies must be in ascending order to handle duplicates"
+            );
+            currAddress = address(strategy);
+        }
+    }
+
+    /**
      * @notice Validate a RewardsSubmission. Called from both `createAVSRewardsSubmission` and `createRewardsForAllSubmission`
      */
     function _validateRewardsSubmission(RewardsSubmission calldata rewardsSubmission) internal view {
-        require(
-            rewardsSubmission.strategiesAndMultipliers.length > 0,
-            "RewardsCoordinator._validateRewardsSubmission: no strategies set"
+        _validateCommonRewardsSubmission(
+            rewardsSubmission.strategiesAndMultipliers,
+            rewardsSubmission.startTimestamp,
+            rewardsSubmission.duration
         );
         require(rewardsSubmission.amount > 0, "RewardsCoordinator._validateRewardsSubmission: amount cannot be 0");
         require(
@@ -332,41 +400,58 @@ contract RewardsCoordinator is
             "RewardsCoordinator._validateRewardsSubmission: amount too large"
         );
         require(
-            rewardsSubmission.duration <= MAX_REWARDS_DURATION,
-            "RewardsCoordinator._validateRewardsSubmission: duration exceeds MAX_REWARDS_DURATION"
-        );
-        require(
-            rewardsSubmission.duration % CALCULATION_INTERVAL_SECONDS == 0,
-            "RewardsCoordinator._validateRewardsSubmission: duration must be a multiple of CALCULATION_INTERVAL_SECONDS"
-        );
-        require(
-            rewardsSubmission.startTimestamp % CALCULATION_INTERVAL_SECONDS == 0,
-            "RewardsCoordinator._validateRewardsSubmission: startTimestamp must be a multiple of CALCULATION_INTERVAL_SECONDS"
-        );
-        require(
-            block.timestamp - MAX_RETROACTIVE_LENGTH <= rewardsSubmission.startTimestamp
-                && GENESIS_REWARDS_TIMESTAMP <= rewardsSubmission.startTimestamp,
-            "RewardsCoordinator._validateRewardsSubmission: startTimestamp too far in the past"
-        );
-        require(
             rewardsSubmission.startTimestamp <= block.timestamp + MAX_FUTURE_LENGTH,
             "RewardsCoordinator._validateRewardsSubmission: startTimestamp too far in the future"
         );
+    }
 
-        // Require rewardsSubmission is for whitelisted strategy or beaconChainETHStrategy
-        address currAddress = address(0);
-        for (uint256 i = 0; i < rewardsSubmission.strategiesAndMultipliers.length; ++i) {
-            IStrategy strategy = rewardsSubmission.strategiesAndMultipliers[i].strategy;
+    /**
+     * @notice Validate a OperatorDirectedRewardsSubmission. Called from `createOperatorDirectedAVSRewardsSubmission`.
+     * @dev Not checking for `MAX_FUTURE_LENGTH` (Since operator-directed reward submissions are strictly retroactive)
+     * or `MAX_REWARDS_AMOUNT` (Since we no longer have the `1e38 - 1` limitation in the offchain rewards calculation)
+     * @param operatorDirectedRewardsSubmission OperatorDirectedRewardsSubmission to validate.
+     * @return total amount to be transferred from the avs to the contract.
+     */
+    function _validateOperatorDirectedRewardsSubmission(
+        OperatorDirectedRewardsSubmission calldata operatorDirectedRewardsSubmission
+    ) internal view returns (uint256) {
+        _validateCommonRewardsSubmission(
+            operatorDirectedRewardsSubmission.strategiesAndMultipliers,
+            operatorDirectedRewardsSubmission.startTimestamp,
+            operatorDirectedRewardsSubmission.duration
+        );
+
+        require(
+            operatorDirectedRewardsSubmission.operatorRewards.length > 0,
+            "RewardsCoordinator._validateOperatorDirectedRewardsSubmission: no operators rewarded"
+        );
+        uint256 totalAmount = 0;
+        address currOperatorAddress = address(0);
+        for (uint256 i = 0; i < operatorDirectedRewardsSubmission.operatorRewards.length; ++i) {
+            OperatorReward calldata operatorReward = operatorDirectedRewardsSubmission.operatorRewards[i];
             require(
-                strategyManager.strategyIsWhitelistedForDeposit(strategy) || strategy == beaconChainETHStrategy,
-                "RewardsCoordinator._validateRewardsSubmission: invalid strategy considered"
+                operatorReward.operator != address(0),
+                "RewardsCoordinator._validateOperatorDirectedRewardsSubmission: operator cannot be 0 address"
             );
             require(
-                currAddress < address(strategy),
-                "RewardsCoordinator._validateRewardsSubmission: strategies must be in ascending order to handle duplicates"
+                currOperatorAddress < operatorReward.operator,
+                "RewardsCoordinator._validateOperatorDirectedRewardsSubmission: operators must be in ascending order to handle duplicates"
             );
-            currAddress = address(strategy);
+            currOperatorAddress = operatorReward.operator;
+            require(
+                operatorReward.amount > 0,
+                "RewardsCoordinator._validateOperatorDirectedRewardsSubmission: operator reward amount cannot be 0"
+            );
+            totalAmount += operatorReward.amount;
         }
+
+        require(
+            operatorDirectedRewardsSubmission.startTimestamp + operatorDirectedRewardsSubmission.duration <
+                block.timestamp,
+            "RewardsCoordinator._validateOperatorDirectedRewardsSubmission: operator-directed rewards submission is not retroactive"
+        );
+
+        return totalAmount;
     }
 
     function _checkClaim(RewardsMerkleClaim calldata claim, DistributionRoot memory root) internal view {
@@ -459,13 +544,46 @@ contract RewardsCoordinator is
         // forgefmt: disable-next-item
         require(
             Merkle.verifyInclusionKeccak({
-                root: root, 
-                index: earnerLeafIndex, 
-                proof: earnerProof, 
+                root: root,
+                index: earnerLeafIndex,
+                proof: earnerProof,
                 leaf: earnerLeafHash
             }),
             "RewardsCoordinator._verifyEarnerClaimProof: invalid earner claim proof"
         );
+    }
+
+    /**
+     * @notice Internal helper to process reward claims.
+     * @param claim The RewardsMerkleClaims to be processed.
+     * @param recipient The address recipient that receives the ERC20 rewards
+     */
+    function _processClaim(RewardsMerkleClaim calldata claim, address recipient) internal {
+        DistributionRoot memory root = _distributionRoots[claim.rootIndex];
+        _checkClaim(claim, root);
+        // If claimerFor earner is not set, claimer is by default the earner. Else set to claimerFor
+        address earner = claim.earnerLeaf.earner;
+        address claimer = claimerFor[earner];
+        if (claimer == address(0)) {
+            claimer = earner;
+        }
+        require(msg.sender == claimer, "RewardsCoordinator.processClaim: caller is not valid claimer");
+        for (uint256 i = 0; i < claim.tokenIndices.length; i++) {
+            TokenTreeMerkleLeaf calldata tokenLeaf = claim.tokenLeaves[i];
+
+            uint256 currCumulativeClaimed = cumulativeClaimed[earner][tokenLeaf.token];
+            require(
+                tokenLeaf.cumulativeEarnings > currCumulativeClaimed,
+                "RewardsCoordinator.processClaim: cumulativeEarnings must be gt than cumulativeClaimed"
+            );
+
+            // Calculate amount to claim and update cumulativeClaimed
+            uint256 claimAmount = tokenLeaf.cumulativeEarnings - currCumulativeClaimed;
+            cumulativeClaimed[earner][tokenLeaf.token] = tokenLeaf.cumulativeEarnings;
+
+            tokenLeaf.token.safeTransfer(recipient, claimAmount);
+            emit RewardsClaimed(root.root, earner, claimer, recipient, tokenLeaf.token, claimAmount);
+        }
     }
 
     function _setActivationDelay(uint32 _activationDelay) internal {
@@ -473,9 +591,9 @@ contract RewardsCoordinator is
         activationDelay = _activationDelay;
     }
 
-    function _setGlobalOperatorCommission(uint16 _globalCommissionBips) internal {
-        emit GlobalCommissionBipsSet(globalOperatorCommissionBips, _globalCommissionBips);
-        globalOperatorCommissionBips = _globalCommissionBips;
+    function _setDefaultOperatorSplit(uint16 split) internal {
+        emit DefaultOperatorSplitBipsSet(defaultOperatorSplitBips, split);
+        defaultOperatorSplitBips = split;
     }
 
     function _setRewardsUpdater(address _rewardsUpdater) internal {
@@ -484,49 +602,94 @@ contract RewardsCoordinator is
     }
 
     /**
+     * @notice Internal helper to set the operator split.
+     * @param operatorSplit The split struct for an Operator
+     * @param split The split in basis points.
+     * @param activatedAt The timestamp when the split is activated.
+     */
+    function _setOperatorSplit(OperatorSplit storage operatorSplit, uint16 split, uint32 activatedAt) internal {
+        // If, the earlier 'new' split is activated, we update the 'old' split with the earlier 'new' split.
+        // Else, the earlier 'old' split remains the same. This is essentially resetting the activation delay window
+        // since the earlier split setting didn't complete.
+        if (block.timestamp >= operatorSplit.activatedAt) {
+            if (operatorSplit.activatedAt == 0) {
+                // If the operator split has not been initialized yet, set the old split to the default split.
+                operatorSplit.oldSplitBips = defaultOperatorSplitBips;
+            } else {
+                operatorSplit.oldSplitBips = operatorSplit.newSplitBips;
+            }
+        }
+        operatorSplit.newSplitBips = split;
+        operatorSplit.activatedAt = activatedAt;
+    }
+
+    /**
+     * @notice Internal helper to get the operator split in basis points.
+     * @dev It takes default split and activation delay into account while calculating the split.
+     * @param operatorSplit The split struct for an Operator
+     * @return The split in basis points.
+     */
+    function _getOperatorSplit(OperatorSplit memory operatorSplit) internal view returns (uint16) {
+        if (operatorSplit.activatedAt == 0) {
+            // Return the Default Operator Split if the operator split has not been initialized.
+            return defaultOperatorSplitBips;
+        } else {
+            // Return the new split if the new split has been activated, else return the old split.
+            return
+                (block.timestamp >= operatorSplit.activatedAt)
+                    ? operatorSplit.newSplitBips
+                    : operatorSplit.oldSplitBips;
+        }
+    }
+
+    /**
      *
      *                         VIEW FUNCTIONS
      *
      */
 
-    /// @notice return the hash of the earner's leaf
+    /// @inheritdoc IRewardsCoordinator
     function calculateEarnerLeafHash(EarnerTreeMerkleLeaf calldata leaf) public pure returns (bytes32) {
         return keccak256(abi.encodePacked(EARNER_LEAF_SALT, leaf.earner, leaf.earnerTokenRoot));
     }
 
-    /// @notice returns the hash of the earner's token leaf
+    /// @inheritdoc IRewardsCoordinator
     function calculateTokenLeafHash(TokenTreeMerkleLeaf calldata leaf) public pure returns (bytes32) {
         return keccak256(abi.encodePacked(TOKEN_LEAF_SALT, leaf.token, leaf.cumulativeEarnings));
     }
 
-    /// @notice returns 'true' if the claim would currently pass the check in `processClaims`
-    /// but will revert if not valid
+    /// @inheritdoc IRewardsCoordinator
     function checkClaim(RewardsMerkleClaim calldata claim) public view returns (bool) {
         _checkClaim(claim, _distributionRoots[claim.rootIndex]);
         return true;
     }
 
-    /// @notice the commission for a specific operator for a specific avs
-    /// NOTE: Currently unused and simply returns the globalOperatorCommissionBips value but will be used in future release
-    function operatorCommissionBips(address operator, address avs) external view returns (uint16) {
-        return globalOperatorCommissionBips;
+    /// @inheritdoc IRewardsCoordinator
+    function getOperatorAVSSplit(address operator, address avs) external view returns (uint16) {
+        return _getOperatorSplit(operatorAVSSplitBips[operator][avs]);
     }
 
+    /// @inheritdoc IRewardsCoordinator
+    function getOperatorPISplit(address operator) external view returns (uint16) {
+        return _getOperatorSplit(operatorPISplitBips[operator]);
+    }
+
+    /// @inheritdoc IRewardsCoordinator
     function getDistributionRootsLength() public view returns (uint256) {
         return _distributionRoots.length;
     }
 
+    /// @inheritdoc IRewardsCoordinator
     function getDistributionRootAtIndex(uint256 index) external view returns (DistributionRoot memory) {
         return _distributionRoots[index];
     }
 
-    /// @notice loop through the distribution roots from reverse and get latest root that is not disabled
+    /// @inheritdoc IRewardsCoordinator
     function getCurrentDistributionRoot() external view returns (DistributionRoot memory) {
         return _distributionRoots[_distributionRoots.length - 1];
     }
 
-    /// @notice loop through the distribution roots from reverse and get latest root that is not disabled and activated
-    /// i.e. a root that can be claimed against
+    /// @inheritdoc IRewardsCoordinator
     function getCurrentClaimableDistributionRoot() external view returns (DistributionRoot memory) {
         for (uint256 i = _distributionRoots.length; i > 0; i--) {
             DistributionRoot memory root = _distributionRoots[i - 1];
@@ -534,9 +697,11 @@ contract RewardsCoordinator is
                 return root;
             }
         }
+        // Silence compiler warning.
+        return DistributionRoot(bytes32(0), 0, 0, false);
     }
 
-    /// @notice loop through distribution roots from reverse and return hash
+    /// @inheritdoc IRewardsCoordinator
     function getRootIndexFromHash(bytes32 rootHash) public view returns (uint32) {
         for (uint32 i = uint32(_distributionRoots.length); i > 0; i--) {
             if (_distributionRoots[i - 1].root == rootHash) {
@@ -546,13 +711,7 @@ contract RewardsCoordinator is
         revert("RewardsCoordinator.getRootIndexFromHash: root not found");
     }
 
-    /**
-     * @notice Getter function for the current EIP-712 domain separator for this contract.
-     *
-     * @dev The domain separator will change in the event of a fork that changes the ChainID.
-     * @dev By introducing a domain separator the DApp developers are guaranteed that there can be no signature collision.
-     * for more detailed information please read EIP-712.
-     */
+    /// @inheritdoc IRewardsCoordinator
     function domainSeparator() public view returns (bytes32) {
         if (block.chainid == ORIGINAL_CHAIN_ID) {
             return _DOMAIN_SEPARATOR;
