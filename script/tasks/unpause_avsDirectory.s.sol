@@ -23,15 +23,14 @@ import "forge-std/Test.sol";
 // RUST_LOG=forge,foundry=trace forge script script/tasks/unpause_avsDirectory.s.sol --rpc-url $RPC_URL --private-key $PRIVATE_KEY --broadcast --sig "run(string memory configFile)" -- <DEPLOYMENT_OUTPUT_JSON>
 // RUST_LOG=forge,foundry=trace forge script script/tasks/unpause_avsDirectory.s.sol --rpc-url $RPC_URL --private-key $PRIVATE_KEY --broadcast --sig "run(string memory configFile)" -- local/slashing_output.json
 contract UnpauseAVSDirectory is Script, Test {
-    Vm cheats = Vm(VM_ADDRESS);
 
     function run(string memory configFile) public {
         // Load config
         string memory deployConfigPath = string(bytes(string.concat("script/output/", configFile)));
-        string memory config_data = vm.readFile(deployConfigPath);
+        string memory configData = vm.readFile(deployConfigPath);
 
         // Pull avs directory address
-        address avsDir = stdJson.readAddress(config_data, ".addresses.avsDirectory");
+        address avsDir = stdJson.readAddress(configData, ".addresses.avsDirectory");
 
         // START RECORDING TRANSACTIONS FOR DEPLOYMENT
         vm.startBroadcast();

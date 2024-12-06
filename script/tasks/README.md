@@ -130,9 +130,9 @@ forge script ../tasks/withdraw_from_strategy.s.sol \
 export WITHDRAWAL_START_BLOCK_NUMBER=$(cast block-number --rpc-url $RPC_URL)
 ```
 
-- Move the chain by 5 blocks (to move beyond `MIN_WITHDRAWAL_DELAY_BLOCKS` (5))
+- Move the chain by atleast 5 blocks (to move beyond `MIN_WITHDRAWAL_DELAY_BLOCKS` (5))
 ```sh
-cast rpc anvil_mine 5 --rpc-url $RPC_URL
+cast rpc anvil_mine 6 --rpc-url $RPC_URL
 ```
 
 - Complete withdrawal
@@ -140,8 +140,8 @@ cast rpc anvil_mine 5 --rpc-url $RPC_URL
 ```sh
 forge script ../tasks/complete_withdrawal_from_strategy.s.sol \
     --rpc-url $RPC_URL --private-key $PRIVATE_KEY --broadcast \
-    --sig "run(string memory configFile,address strategy,address token,uint256 amount,uint256 nonce,uint32 startBlock)" \
-    -- local/slashing_output.json $STRATEGY $TOKEN $SHARES $NONCE $WITHDRAWAL_START_BLOCK_NUMBER
+    --sig "run(string memory configFile,address delegatedTo,address strategy,address token,uint256 amount,uint256 nonce,uint32 startBlock)" \
+    -- local/slashing_output.json $SENDER $STRATEGY $TOKEN $SHARES $NONCE $WITHDRAWAL_START_BLOCK_NUMBER
 ```
 
 15. Verify that the `SHARES` we're withdrawn back to the sender

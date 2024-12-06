@@ -91,7 +91,7 @@ forge script ../tasks/withdraw_from_strategy.s.sol \
 WITHDRAWAL_START_BLOCK_NUMBER=$(cast block-number --rpc-url $RPC_URL)
 
 # Advance the blockchain by 5 blocks to meet `MIN_WITHDRAWAL_DELAY_BLOCKS`
-cast rpc anvil_mine 5 --rpc-url $RPC_URL
+cast rpc anvil_mine 6 --rpc-url $RPC_URL
 
 # Slash the OperatorSet (50%)
 forge script ../tasks/slash_operatorSet.s.sol \
@@ -102,8 +102,20 @@ forge script ../tasks/slash_operatorSet.s.sol \
 # Complete the withdrawal process
 forge script ../tasks/complete_withdrawal_from_strategy.s.sol \
     --rpc-url $RPC_URL --private-key $PRIVATE_KEY --broadcast \
-    --sig "run(string memory configFile,address strategy,address token,uint256 amount,uint256 nonce,uint32 startBlock)" \
-    -- local/slashing_output.json $STRATEGY $TOKEN $SHARES $NONCE $WITHDRAWAL_START_BLOCK_NUMBER
+    --sig "run(string memory configFile,address delegatedTo,address strategy,address token,uint256 amount,uint256 nonce,uint32 startBlock)" \
+    -- local/slashing_output.json $SENDER $STRATEGY $TOKEN $SHARES $NONCE $WITHDRAWAL_START_BLOCK_NUMBER
+
+# Remove strategy from operatorSet
+forge script ../tasks/remove_strategies_from_operatorSet.s.sol \
+    --rpc-url $RPC_URL --private-key $PRIVATE_KEY --broadcast \
+    --sig "run(string memory configFile,address strategy,uint32 operatorSetId)" \
+    -- local/slashing_output.json $STRATEGY 00000001
+
+# Add strategy back to operatorSet
+forge script ../tasks/register_strategies_to_operatorSet.s.sol \
+    --rpc-url $RPC_URL --private-key $PRIVATE_KEY --broadcast \
+    --sig "run(string memory configFile,address strategy,uint32 operatorSetId)" \
+    -- local/slashing_output.json $STRATEGY 00000001
 
 # Verification
 FINAL_SHARES=$(cast call $DELEGATION_MANAGER "getWithdrawableShares(address,address[])(uint256[],uint256[])" $SENDER "[$STRATEGY]" --rpc-url $RPC_URL | sed -n '1p' | tr -d '[]')
