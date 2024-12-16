@@ -447,7 +447,7 @@ contract MarketplaceStateInitializer_Simple is Script {
 
         ISignatureUtils.SignatureWithExpiry memory approverSignatureAndExpiry;
 
-        for(uint256 i = 8; i < numToInitialize; i++) {
+        for(uint256 i = 0; i < numToInitialize; i++) {
             // Get staker
             (address staker, uint256 stakerPrivateKey) = deriveRememberKey(MNEMONIC, uint32(stakerStartIndex + i));
             console.log("staker: ", staker);
