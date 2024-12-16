@@ -15,7 +15,7 @@ import "src/contracts/core/StrategyManager.sol";
 import {OperatorSet} from "src/contracts/libraries/OperatorSetLib.sol";
 
 
-contract MarketplaceStateInitializer is Script {
+contract MarketplaceStateInitializer_Simple is Script {
     using Strings for uint256;
 
     // Contracts

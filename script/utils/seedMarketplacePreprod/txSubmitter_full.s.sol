@@ -713,7 +713,7 @@ contract MarketplaceStateInitializer is Script {
 
         uint64[] memory magnitudes = new uint64[](5);
         for(uint256 i = 0; i < magnitudes.length; i++) {
-            magnitudes[i] = 50e16;
+            magnitudes[i] = 75e15;
         }
 
         // Operator 4
@@ -737,7 +737,7 @@ contract MarketplaceStateInitializer is Script {
 
         uint256[] memory wadsToSlash = new uint256[](5);
         for(uint256 i = 0; i < wadsToSlash.length; i++) {
-            wadsToSlash[i] = 1e18;
+            wadsToSlash[i] = 5e17;
         }
 
         IAllocationManagerTypes.SlashingParams memory params = IAllocationManagerTypes.SlashingParams({
