@@ -684,7 +684,7 @@ contract MarketplaceStateInitializer is Script {
 
         uint256[] memory wadsToSlash = new uint256[](5);
         for(uint256 i = 0; i < wadsToSlash.length; i++) {
-            wadsToSlash[i] = 10e16;
+            wadsToSlash[i] = 20e16;
         }
 
         IAllocationManagerTypes.SlashingParams memory params = IAllocationManagerTypes.SlashingParams({
@@ -692,7 +692,7 @@ contract MarketplaceStateInitializer is Script {
             operatorSetId: 5,
             strategies: strategies,
             wadsToSlash: wadsToSlash,
-            description: "Misbehavior"
+            description: "Misbehavior Test 2"
         });
 
         _broadcastSuperAdmin();
@@ -907,6 +907,58 @@ contract MarketplaceStateInitializer is Script {
         signature = abi.encodePacked(r, s, v);
     }
 
+    function createRewardsV2Submission() external parseState {
+        // Deploy token 
+        string memory name = "Slashing_RV2_Test";
+        string memory symbol = "SRT";
+        IERC20 rewardToken = IERC20(_deployToken(name, symbol));
+        IRewardsCoordinator.OperatorDirectedRewardsSubmission[] memory rewardsSubmission = new IRewardsCoordinator.OperatorDirectedRewardsSubmission[](1);
+        // Format strategies and multipliers
+        // This is to the slashing strategies
+        IRewardsCoordinator.StrategyAndMultiplier[] memory strategyAndMultipliers = new IRewardsCoordinator.StrategyAndMultiplier[](strategyAddresses.length);
+        for (uint256 i = 0; i < strategyAddresses.length; i++) {
+            strategyAndMultipliers[i].multiplier = 1e18;
+        }
+        strategyAndMultipliers[0].strategy = IStrategy(strategyAddresses[3]);
+        strategyAndMultipliers[1].strategy = IStrategy(strategyAddresses[1]);
+        strategyAndMultipliers[2].strategy = IStrategy(strategyAddresses[0]);
+        strategyAndMultipliers[3].strategy = IStrategy(strategyAddresses[2]);
+        strategyAndMultipliers[4].strategy = IStrategy(strategyAddresses[4]);
+
+        // Format Range
+        uint32 calculationIntervalSeconds = rewardsCoordinator.CALCULATION_INTERVAL_SECONDS();
+        uint32 moddedCurrTimestamp = uint32(block.timestamp) - (uint32(block.timestamp) % calculationIntervalSeconds);
+        uint32 startTimestamp = moddedCurrTimestamp - 4 days;
+        uint32 duration = 4 days;
+
+        IRewardsCoordinator.OperatorReward[] memory operatorRewards = new IRewardsCoordinator.OperatorReward[](5);
+        operatorRewards[0].operator = operatorAddresses[1];
+        operatorRewards[0].amount = 10e18;
+        operatorRewards[1].operator = operatorAddresses[2];
+        operatorRewards[1].amount = 20e18;
+        operatorRewards[2].operator = operatorAddresses[3];
+        operatorRewards[2].amount = 30e18;
+        operatorRewards[3].operator = operatorAddresses[4];
+        operatorRewards[3].amount = 40e18;
+        operatorRewards[4].operator = operatorAddresses[0];
+        operatorRewards[4].amount = 50e18;
+
+
+        rewardsSubmission[0].strategiesAndMultipliers = strategyAndMultipliers;
+        rewardsSubmission[0].token = rewardToken;
+        rewardsSubmission[0].startTimestamp = startTimestamp;
+        rewardsSubmission[0].duration = duration;
+        rewardsSubmission[0].operatorRewards = operatorRewards;
+
+
+        _broadcastSuperAdmin();
+        for (uint256 i = 0; i < rewardsSubmission.length; i++) {
+            rewardsSubmission[i].token.approve(address(rewardsCoordinator), type(uint256).max);
+        }
+        rewardsCoordinator.createOperatorDirectedAVSRewardsSubmission(avsAddresses[2], rewardsSubmission);
+        vm.stopBroadcast();
+    }
+
     function createPIRewardSubmission() external parseState {
         // Deploy token 
         string memory name = "Slashing_PI_Test";
@@ -948,12 +1000,12 @@ contract MarketplaceStateInitializer is Script {
 
     function _deployToken(string memory name, string memory symbol) public returns (address) {
         uint256 tokenInitialSupply = 1e36;
-        vm.startBroadcast();
+        _broadcastSuperAdmin();
         ERC20PresetFixedSupply rewardToken = new ERC20PresetFixedSupply(
             name,
             symbol,
             tokenInitialSupply,
-            msg.sender
+            superAdmin
         );
         rewardToken.approve(address(rewardsCoordinator), tokenInitialSupply);
         vm.stopBroadcast();
