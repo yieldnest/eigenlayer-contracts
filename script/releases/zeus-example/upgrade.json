@@ -1,0 +1,15 @@
+{
+    "name": "blank-update",
+    "from": ">=0.0.0 <=0.5.3",
+    "to": "0.0.0",
+    "phases": [
+        {
+            "type": "eoa",
+            "filename": "1-eoa.s.sol"
+        },
+        {
+            "type": "multisig",
+            "filename": "2-multisig.s.sol"
+        }
+    ]
+}
