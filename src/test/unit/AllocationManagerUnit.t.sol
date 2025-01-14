@@ -1993,7 +1993,7 @@ contract AllocationManagerUnitTests_ModifyAllocations is AllocationManagerUnitTe
         allocationManager.modifyAllocations(defaultOperator, allocateParams);
     }
 
-    function test_revert_pendingDiffOverflow() public {
+    function test_revert_safeCastOverflow() public {
         // setup additional operatorSets for tests
         OperatorSet memory opSet1 = OperatorSet(defaultAVS, 1);
         _createOperatorSet(opSet1, defaultStrategies);
@@ -2027,12 +2027,14 @@ contract AllocationManagerUnitTests_ModifyAllocations is AllocationManagerUnitTe
         allocateParams[0].operatorSet = opSet1;
         allocateParams[0].newMagnitudes[0] = type(uint64).max - WAD + 1;
         cheats.prank(defaultOperator);
+        cheats.expectRevert("SafeCast: value doesn't fit in 64 bits");
         allocationManager.modifyAllocations(defaultOperator, allocateParams);
 
         // 3. after resetting encumberedMagnitude, attempt to allocate to opSet2 with WAD
         allocateParams[0].operatorSet = opSet2;
         allocateParams[0].newMagnitudes[0] = WAD;
         cheats.prank(defaultOperator);
+        cheats.expectRevert(InsufficientMagnitude.selector);
         allocationManager.modifyAllocations(defaultOperator, allocateParams);
     }
 
