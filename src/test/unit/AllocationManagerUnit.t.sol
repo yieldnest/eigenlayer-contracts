@@ -1994,20 +1994,24 @@ contract AllocationManagerUnitTests_ModifyAllocations is AllocationManagerUnitTe
     }
 
     function test_revert_pendingDiffOverflow() public {
-        // setup second operatorSet for test
-        OperatorSet memory newOperatorSet = OperatorSet(defaultAVS, 1);
-        _createOperatorSet(newOperatorSet, defaultStrategies);
+        // setup additional operatorSets for tests
+        OperatorSet memory opSet1 = OperatorSet(defaultAVS, 1);
+        _createOperatorSet(opSet1, defaultStrategies);
         _registerOperator(defaultOperator);
         _setAllocationDelay(defaultOperator, DEFAULT_OPERATOR_ALLOCATION_DELAY);
-        _registerForOperatorSet(defaultOperator, newOperatorSet);
+        _registerForOperatorSet(defaultOperator, opSet1);
 
-        // Allocate all available magnitude for the strategy (WAD)
+        OperatorSet memory opSet2 = OperatorSet(defaultAVS, 2);
+        _createOperatorSet(opSet2, defaultStrategies);
+        _registerOperator(defaultOperator);
+        _setAllocationDelay(defaultOperator, DEFAULT_OPERATOR_ALLOCATION_DELAY);
+        _registerForOperatorSet(defaultOperator, opSet2);
+
+        // 1. Allocate all available magnitude for the strategy (WAD)
         AllocateParams[] memory allocateParams = _randAllocateParams_DefaultOpSet();
-
         allocateParams[0].newMagnitudes[0] = WAD;
         cheats.prank(defaultOperator);
         allocationManager.modifyAllocations(defaultOperator, allocateParams);
-
         assertEq(
             allocationManager.getAllocatableMagnitude(defaultOperator, strategyMock),
             0,
@@ -2019,27 +2023,17 @@ contract AllocationManagerUnitTests_ModifyAllocations is AllocationManagerUnitTe
             "Encumbered magnitude should be WAD"
         );
 
-
-        // Warp to allocation complete block
-        cheats.roll(block.number + DEFAULT_OPERATOR_ALLOCATION_DELAY);
-
-        // allocate to another operatorSet for the same strategy
-        allocateParams[0].operatorSet = newOperatorSet;
+        // 2. allocate to another operatorSet for the same strategy to reset encumberedMagnitude back to 0
+        allocateParams[0].operatorSet = opSet1;
         allocateParams[0].newMagnitudes[0] = type(uint64).max - WAD + 1;
-
         cheats.prank(defaultOperator);
         allocationManager.modifyAllocations(defaultOperator, allocateParams);
 
-        assertEq(
-            allocationManager.getAllocatableMagnitude(defaultOperator, strategyMock),
-            0,
-            "Allocatable magnitude should be 0"
-        );
-        assertEq(
-            allocationManager.encumberedMagnitude(defaultOperator, strategyMock),
-            WAD,
-            "Encumbered magnitude should be WAD"
-        );
+        // 3. after resetting encumberedMagnitude, attempt to allocate to opSet2 with WAD
+        allocateParams[0].operatorSet = opSet2;
+        allocateParams[0].newMagnitudes[0] = WAD;
+        cheats.prank(defaultOperator);
+        allocationManager.modifyAllocations(defaultOperator, allocateParams);
     }
 
     /**
