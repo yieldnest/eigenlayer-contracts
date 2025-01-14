@@ -1993,6 +1993,55 @@ contract AllocationManagerUnitTests_ModifyAllocations is AllocationManagerUnitTe
         allocationManager.modifyAllocations(defaultOperator, allocateParams);
     }
 
+    function test_revert_pendingDiffOverflow() public {
+        // setup second operatorSet for test
+        OperatorSet memory newOperatorSet = OperatorSet(defaultAVS, 1);
+        _createOperatorSet(newOperatorSet, defaultStrategies);
+        _registerOperator(defaultOperator);
+        _setAllocationDelay(defaultOperator, DEFAULT_OPERATOR_ALLOCATION_DELAY);
+        _registerForOperatorSet(defaultOperator, newOperatorSet);
+
+        // Allocate all available magnitude for the strategy (WAD)
+        AllocateParams[] memory allocateParams = _randAllocateParams_DefaultOpSet();
+
+        allocateParams[0].newMagnitudes[0] = WAD;
+        cheats.prank(defaultOperator);
+        allocationManager.modifyAllocations(defaultOperator, allocateParams);
+
+        assertEq(
+            allocationManager.getAllocatableMagnitude(defaultOperator, strategyMock),
+            0,
+            "Allocatable magnitude should be 0"
+        );
+        assertEq(
+            allocationManager.encumberedMagnitude(defaultOperator, strategyMock),
+            WAD,
+            "Encumbered magnitude should be WAD"
+        );
+
+
+        // Warp to allocation complete block
+        cheats.roll(block.number + DEFAULT_OPERATOR_ALLOCATION_DELAY);
+
+        // allocate to another operatorSet for the same strategy
+        allocateParams[0].operatorSet = newOperatorSet;
+        allocateParams[0].newMagnitudes[0] = type(uint64).max - WAD + 1;
+
+        cheats.prank(defaultOperator);
+        allocationManager.modifyAllocations(defaultOperator, allocateParams);
+
+        assertEq(
+            allocationManager.getAllocatableMagnitude(defaultOperator, strategyMock),
+            0,
+            "Allocatable magnitude should be 0"
+        );
+        assertEq(
+            allocationManager.encumberedMagnitude(defaultOperator, strategyMock),
+            WAD,
+            "Encumbered magnitude should be WAD"
+        );
+    }
+
     /**
      * @notice Tests edge cases around allocation delay:
      * 1. Set allocation delay to a value greater than ALLOCATION_CONFIGURATION_DELAY
