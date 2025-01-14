@@ -39,6 +39,10 @@ abstract contract AVSDirectoryStorage is IAVSDirectory {
     /// @dev This storage will be deprecated once M2-based deregistration is removed.
     mapping(address avs => mapping(address operator => OperatorAVSRegistrationStatus)) public avsOperatorStatus;
 
+    /// @dev Lists the AVSs who has registered metadata and claimed itself as an AVS
+    /// @notice bool is not used and if always true if the avs has registered metadata
+    mapping(address avs => bool) internal _avsRegisteredMetadata;
+
     /// @notice Returns whether a `salt` has been used by a given `operator`.
     mapping(address operator => mapping(bytes32 salt => bool isSpent)) public operatorSaltIsSpent;
 
@@ -55,5 +59,5 @@ abstract contract AVSDirectoryStorage is IAVSDirectory {
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[47] private __gap;
+    uint256[48] private __gap;
 }

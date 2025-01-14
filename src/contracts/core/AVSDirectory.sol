@@ -78,6 +78,9 @@ contract AVSDirectory is
             OperatorAlreadyRegisteredToAVS()
         );
 
+        // Assert that the AVS exist and has registered metadata
+        require(_avsRegisteredMetadata[msg.sender] == true, InvalidAVSWithNoMetadataRegistered());
+
         // Assert `operator` has not already spent `operatorSignature.salt`.
         require(!operatorSaltIsSpent[operator][operatorSignature.salt], SaltSpent());
 
@@ -115,6 +118,8 @@ contract AVSDirectory is
             avsOperatorStatus[msg.sender][operator] == OperatorAVSRegistrationStatus.REGISTERED,
             OperatorNotRegisteredToAVS()
         );
+        // Assert that the AVS exist and has registered metadata
+        require(_avsRegisteredMetadata[msg.sender] == true, InvalidAVSWithNoMetadataRegistered());
 
         // Set the operator as deregistered
         avsOperatorStatus[msg.sender][operator] = OperatorAVSRegistrationStatus.UNREGISTERED;

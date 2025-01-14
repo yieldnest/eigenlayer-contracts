@@ -16,6 +16,8 @@ interface IAVSDirectoryErrors {
     error OperatorAlreadyRegisteredToAVS();
     /// @dev Thrown when attempting to spend a spent eip-712 salt.
     error SaltSpent();
+    /// @dev Thrown when an invalid avs whose metadata is not registered is provided.
+    error InvalidAVSWithNoMetadataRegistered();
 }
 
 interface IAVSDirectoryTypes {
