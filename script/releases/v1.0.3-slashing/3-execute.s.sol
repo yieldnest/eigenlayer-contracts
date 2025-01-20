@@ -4,8 +4,8 @@ pragma solidity ^0.8.12;
 import "../Env.sol";
 import {Queue} from "./2-multisig.s.sol";
 
-import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
+import "@openzeppelin-v4.9.0/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import "@openzeppelin-v4.9.0/contracts/proxy/transparent/ProxyAdmin.sol";
 
 contract Execute is Queue {
     using Env for *;
@@ -89,7 +89,7 @@ contract Execute is Queue {
         assertTrue(rewards.MAX_RETROACTIVE_LENGTH() == Env.MAX_RETROACTIVE_LENGTH(), "rc.retroLength invalid");
         assertTrue(rewards.MAX_FUTURE_LENGTH() == Env.MAX_FUTURE_LENGTH(), "rc.futureLength invalid");
         assertTrue(rewards.GENESIS_REWARDS_TIMESTAMP() == Env.GENESIS_REWARDS_TIMESTAMP(), "rc.genesis invalid");
-        
+
         StrategyManager strategyManager = Env.proxy.strategyManager();
         assertTrue(strategyManager.delegation() == Env.proxy.delegationManager(), "sm.dm invalid");
         assertTrue(strategyManager.pauserRegistry() == Env.impl.pauserRegistry(), "sm.pR invalid");

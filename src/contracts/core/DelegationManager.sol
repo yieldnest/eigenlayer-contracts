@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.27;
 
-import "@openzeppelin-upgrades/contracts/proxy/utils/Initializable.sol";
-import "@openzeppelin-upgrades/contracts/access/OwnableUpgradeable.sol";
-import "@openzeppelin-upgrades/contracts/security/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin-upgrades-v4.9.0/contracts/proxy/utils/Initializable.sol";
+import "@openzeppelin-upgrades-v4.9.0/contracts/access/OwnableUpgradeable.sol";
+import "@openzeppelin-upgrades-v4.9.0/contracts/security/ReentrancyGuardUpgradeable.sol";
 
 import "../mixins/SignatureUtils.sol";
 import "../mixins/PermissionControllerMixin.sol";
@@ -354,8 +354,8 @@ contract DelegationManager is
         for (uint256 i = 0; i < strategies.length; ++i) {
             // forgefmt: disable-next-item
             _increaseDelegation({
-                operator: operator, 
-                staker: staker, 
+                operator: operator,
+                staker: staker,
                 strategy: strategies[i],
                 prevDepositShares: uint256(0),
                 addedShares: depositedShares[i],
@@ -1003,11 +1003,11 @@ contract DelegationManager is
         return _calculateSignableDigest(
             keccak256(
                 abi.encode(
-                    DELEGATION_APPROVAL_TYPEHASH, 
-                    approver, 
-                    staker, 
-                    operator, 
-                    approverSalt, 
+                    DELEGATION_APPROVAL_TYPEHASH,
+                    approver,
+                    staker,
+                    operator,
+                    approverSalt,
                     expiry
                 )
             )

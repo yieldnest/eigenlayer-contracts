@@ -3,9 +3,9 @@ pragma solidity ^0.8.27;
 
 import "forge-std/Test.sol";
 
-import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
-import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-import "@openzeppelin/contracts/token/ERC20/presets/ERC20PresetFixedSupply.sol";
+import "@openzeppelin-v4.9.0/contracts/proxy/transparent/ProxyAdmin.sol";
+import "@openzeppelin-v4.9.0/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import "@openzeppelin-v4.9.0/contracts/token/ERC20/presets/ERC20PresetFixedSupply.sol";
 import "../harnesses/EigenHarness.sol";
 
 contract EigenTransferRestrictionsTest is Test {
@@ -39,7 +39,7 @@ contract EigenTransferRestrictionsTest is Test {
         vm.startPrank(minter1);
         proxyAdmin = new ProxyAdmin();
         // initialize with dummy BackingEigen address
-        
+
         eigenImpl = new EigenHarness(new ERC20PresetFixedSupply({
             name: "bEIGEN",
             symbol: "bEIGEN",
@@ -105,7 +105,7 @@ contract EigenTransferRestrictionsTest is Test {
         // send other tokens from minter1
         vm.startPrank(minter1);
         eigen.transfer(from, eigen.balanceOf(minter1) / 2);
-        
+
         // sending from other will revert
         vm.startPrank(from);
         uint256 fromBalance = eigen.balanceOf(from);

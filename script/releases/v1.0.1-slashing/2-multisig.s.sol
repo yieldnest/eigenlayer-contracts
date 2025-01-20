@@ -7,7 +7,7 @@ import "../Env.sol";
 import {MultisigBuilder} from "zeus-templates/templates/MultisigBuilder.sol";
 import "zeus-templates/utils/Encode.sol";
 
-import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
+import {TimelockController} from "@openzeppelin-v4.9.0/contracts/governance/TimelockController.sol";
 
 contract Queue is MultisigBuilder, Deploy {
     using Env for *;
@@ -45,7 +45,7 @@ contract Queue is MultisigBuilder, Deploy {
                     impl: address(Env.impl.delegationManager())
                 })
             });
-        
+
         return Encode.gnosisSafe.execTransaction({
             from: address(Env.timelockController()),
             to: address(Env.multiSendCallOnly()),
@@ -69,7 +69,7 @@ contract Queue is MultisigBuilder, Deploy {
 
         // Check that the upgrade does not exist in the timelock
         assertFalse(timelock.isOperationPending(txHash), "Transaction should NOT be queued.");
-  
+
         execute();
 
         // Check that the upgrade has been added to the timelock

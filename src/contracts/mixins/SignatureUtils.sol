@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import "@openzeppelin-upgrades/contracts/utils/cryptography/SignatureCheckerUpgradeable.sol";
+import "@openzeppelin-upgrades-v4.9.0/contracts/utils/cryptography/SignatureCheckerUpgradeable.sol";
 
 import "../interfaces/ISignatureUtils.sol";
 
@@ -54,12 +54,12 @@ abstract contract SignatureUtils is ISignatureUtils {
     /// @dev Helper for calculating the contract's domain separator.
     function _calculateDomainSeparator() internal view returns (bytes32) {
         /// forgefmt: disable-next-item
-        return 
+        return
             keccak256(
                 abi.encode(
-                    EIP712_DOMAIN_TYPEHASH, 
-                    keccak256(bytes("EigenLayer")), 
-                    block.chainid, 
+                    EIP712_DOMAIN_TYPEHASH,
+                    keccak256(bytes("EigenLayer")),
+                    block.chainid,
                     address(this)
                 )
             );

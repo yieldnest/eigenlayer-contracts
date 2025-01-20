@@ -4,10 +4,10 @@ pragma solidity ^0.8.12;
 import {EOADeployer} from "zeus-templates/templates/EOADeployer.sol";
 import "../Env.sol";
 
-import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "@openzeppelin-v4.9.0/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import "@openzeppelin-v4.9.0/contracts/proxy/transparent/ProxyAdmin.sol";
+import "@openzeppelin-v4.9.0/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin-v4.9.0/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 contract Deploy is EOADeployer {
     using Env for *;
@@ -79,7 +79,7 @@ contract Deploy is EOADeployer {
         assertTrue(allocationManager.permissionController() == Env.proxy.permissionController(), "alm.pc invalid");
         assertTrue(allocationManager.DEALLOCATION_DELAY() == Env.MIN_WITHDRAWAL_DELAY(), "alm.deallocDelay invalid");
         assertTrue(allocationManager.ALLOCATION_CONFIGURATION_DELAY() == Env.ALLOCATION_CONFIGURATION_DELAY(), "alm.configDelay invalid");
-        
+
 
         DelegationManager delegation = Env.impl.delegationManager();
         assertTrue(delegation.strategyManager() == Env.proxy.strategyManager(), "dm.sm invalid");
