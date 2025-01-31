@@ -53,7 +53,7 @@ contract ERC20Mock is Context, IERC20 {
     function decimals() external pure returns (uint8) {
         return 18;
     }
-
+    
     /**
      * @dev See {IERC20-totalSupply}.
      */

@@ -365,12 +365,12 @@ contract StrategyManager is
         return _calculateSignableDigest(
             keccak256(
                 abi.encode(
-                    DEPOSIT_TYPEHASH,
-                    staker,
-                    strategy,
-                    token,
-                    amount,
-                    nonce,
+                    DEPOSIT_TYPEHASH, 
+                    staker, 
+                    strategy, 
+                    token, 
+                    amount, 
+                    nonce, 
                     expiry
                 )
             )

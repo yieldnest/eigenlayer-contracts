@@ -71,7 +71,7 @@ abstract contract IntegrationBase is IntegrationDeployer {
      * @dev Create a new operator according to configured random variants.
      * This user will immediately deposit their randomized assets into eigenlayer.
      * @notice If forktype is mainnet and not upgraded, then the operator will only randomize LSTs assets and deposit them
-     * as ETH podowner shares are not available yet.
+     * as ETH podowner shares are not available yet. 
      */
     function _newRandomOperator() internal returns (User, IStrategy[] memory, uint[] memory) {
         User operator;
@@ -83,11 +83,11 @@ abstract contract IntegrationBase is IntegrationDeployer {
             string memory operatorName = string.concat("M2Operator", numOperators.toString());
 
             // Create an operator for M2.
-            // TODO: Allow this operator to have ETH
+            // TODO: Allow this operator to have ETH 
             (operator, strategies, tokenBalances) = _randUser_NoETH(operatorName);
 
             addedShares = _calculateExpectedShares(strategies, tokenBalances);
-
+            
             User_M2(payable(operator)).registerAsOperator_M2();
             operator.depositIntoEigenlayer(strategies, tokenBalances); // Deposits interface doesn't change between M2 and slashing
 
@@ -104,7 +104,7 @@ abstract contract IntegrationBase is IntegrationDeployer {
 
             // Roll passed the allocation configuration delay
             rollForward({blocks: ALLOCATION_CONFIGURATION_DELAY});
-        }
+        }        
 
         assert_Snap_Added_Staker_DepositShares(operator, strategies, addedShares, "_newRandomOperator: failed to add delegatable shares");
         assert_Snap_Added_OperatorShares(operator, strategies, addedShares, "_newRandomOperator: failed to award shares to operator");
@@ -186,7 +186,7 @@ abstract contract IntegrationBase is IntegrationDeployer {
 
         return result;
     }
-
+    
     function _getTokenName(IERC20 token) internal view returns (string memory) {
         if (token == NATIVE_ETH) {
             return "Native ETH";
@@ -198,22 +198,22 @@ abstract contract IntegrationBase is IntegrationDeployer {
     *******************************************************************************/
 
     function assert_HasNoDelegatableShares(User user, string memory err) internal view {
-        (IStrategy[] memory strategies, uint[] memory shares) =
+        (IStrategy[] memory strategies, uint[] memory shares) = 
             delegationManager.getDepositedShares(address(user));
-
+        
         assertEq(strategies.length, 0, err);
         assertEq(strategies.length, shares.length, "assert_HasNoDelegatableShares: return length mismatch");
     }
 
     function assert_HasUnderlyingTokenBalances(
-        User user,
-        IStrategy[] memory strategies,
-        uint[] memory expectedBalances,
+        User user, 
+        IStrategy[] memory strategies, 
+        uint[] memory expectedBalances, 
         string memory err
     ) internal view {
         for (uint i = 0; i < strategies.length; i++) {
             IStrategy strat = strategies[i];
-
+            
             uint expectedBalance = expectedBalances[i];
             uint tokenBalance;
             if (strat == BEACONCHAIN_ETH_STRAT) {
@@ -231,9 +231,9 @@ abstract contract IntegrationBase is IntegrationDeployer {
     }
 
     function assert_HasExpectedShares(
-        User user,
-        IStrategy[] memory strategies,
-        uint[] memory expectedShares,
+        User user, 
+        IStrategy[] memory strategies, 
+        uint[] memory expectedShares, 
         string memory err
     ) internal view {
         uint[] memory actualShares = _getStakerDepositShares(user, strategies);
@@ -243,9 +243,9 @@ abstract contract IntegrationBase is IntegrationDeployer {
     }
 
     function assert_HasOperatorShares(
-        User user,
-        IStrategy[] memory strategies,
-        uint[] memory expectedShares,
+        User user, 
+        IStrategy[] memory strategies, 
+        uint[] memory expectedShares, 
         string memory err
     ) internal view {
         for (uint i = 0; i < strategies.length; i++) {
@@ -320,7 +320,7 @@ abstract contract IntegrationBase is IntegrationDeployer {
         EigenPod pod = staker.pod();
         assertEq(pod.currentCheckpoint().podBalanceGwei, expectedPodBalanceGwei, err);
     }
-
+    
     /*******************************************************************************
                                 SNAPSHOT ASSERTIONS
                        TIME TRAVELERS ONLY BEYOND THIS POINT
@@ -343,8 +343,8 @@ abstract contract IntegrationBase is IntegrationDeployer {
 
         for (uint i = 0; i < allocateParams.strategies.length; i++) {
             IAllocationManagerTypes.Allocation memory curAlloc = curAllocs[i];
-            IAllocationManagerTypes.Allocation memory prevAlloc = prevAllocs[i];
-
+            IAllocationManagerTypes.Allocation memory prevAlloc = prevAllocs[i]; 
+            
             // Check allocations
             if (completed) {
                 assertEq(curAlloc.currentMagnitude, allocateParams.newMagnitudes[i], string.concat(err, " (currentMagnitude)"));
@@ -352,21 +352,21 @@ abstract contract IntegrationBase is IntegrationDeployer {
                 assertEq(curAlloc.effectBlock, 0, string.concat(err, " (effectBlock)"));
             } else {
                 assertEq(
-                    curAlloc.currentMagnitude,
-                    prevAlloc.currentMagnitude,
+                    curAlloc.currentMagnitude, 
+                    prevAlloc.currentMagnitude, 
                     string.concat(err, " (currentMagnitude)")
                 );
                 assertEq(
-                    curAlloc.pendingDiff,
-                    prevAlloc.pendingDiff + int128(int64(allocateParams.newMagnitudes[i])),
+                    curAlloc.pendingDiff, 
+                    prevAlloc.pendingDiff + int128(int64(allocateParams.newMagnitudes[i])), 
                     string.concat(err, " (pendingDiff)")
                 );
 
                 (, uint32 delay) = allocationManager.getAllocationDelay(address(operator));
 
                 assertEq(
-                    curAlloc.effectBlock,
-                    block.number + delay,
+                    curAlloc.effectBlock, 
+                    block.number + delay, 
                     string.concat(err, " (effectBlock)")
                 );
             }
@@ -378,18 +378,18 @@ abstract contract IntegrationBase is IntegrationDeployer {
             // if (isAllocation) ...
             if (prevAlloc.currentMagnitude < allocateParams.newMagnitudes[i]) {
                 uint256 delta = allocateParams.newMagnitudes[i] - prevAlloc.currentMagnitude;
-
+                
                 // FIXME: Fails on `testFuzz_deposit_delegate_allocate` when completed == true.
                 if (!completed) {
                     assertEq(
-                        curMagnitude.encumbered,
-                        prevMagnitude.encumbered + delta,
+                        curMagnitude.encumbered, 
+                        prevMagnitude.encumbered + delta, 
                         string.concat(err, " (encumbered magnitude)")
                     );
 
                     assertEq(
-                        curMagnitude.allocatable,
-                        prevMagnitude.allocatable - delta,
+                        curMagnitude.allocatable, 
+                        prevMagnitude.allocatable - delta, 
                         string.concat(err, " (allocatable magnitude)")
                     );
                 }
@@ -399,26 +399,26 @@ abstract contract IntegrationBase is IntegrationDeployer {
                 // if deallocated, and completed
                 if (completed) {
                     assertEq(
-                        curMagnitude.encumbered - delta,
-                        prevMagnitude.encumbered,
+                        curMagnitude.encumbered - delta, 
+                        prevMagnitude.encumbered, 
                         string.concat(err, " (encumbered magnitude)")
                     );
 
                     assertEq(
-                        curMagnitude.allocatable,
-                        prevMagnitude.allocatable + delta,
+                        curMagnitude.allocatable, 
+                        prevMagnitude.allocatable + delta, 
                         string.concat(err, " (allocatable magnitude)")
                     );
                 } else {
                     assertEq(
-                        curMagnitude.encumbered,
-                        prevMagnitude.encumbered,
+                        curMagnitude.encumbered, 
+                        prevMagnitude.encumbered, 
                         string.concat(err, " (encumbered magnitude)")
                     );
 
                     assertEq(
-                        curMagnitude.allocatable,
-                        prevMagnitude.allocatable,
+                        curMagnitude.allocatable, 
+                        prevMagnitude.allocatable, 
                         string.concat(err, " (allocatable magnitude)")
                     );
                 }
@@ -426,8 +426,8 @@ abstract contract IntegrationBase is IntegrationDeployer {
 
             // Max magnitude should not have mutated.
             assertEq(
-                curMagnitude.max,
-                prevMagnitude.max,
+                curMagnitude.max, 
+                prevMagnitude.max, 
                 string.concat(err, " (max magnitude)")
             );
         }
@@ -440,7 +440,7 @@ abstract contract IntegrationBase is IntegrationDeployer {
         string memory err
     ) internal {
         User op = User(payable(slashingParams.operator));
-
+        
         IAllocationManagerTypes.Allocation[] memory curAllocs = _getAllocations(op, operatorSet, slashingParams.strategies);
         IAllocationManagerTypes.Allocation[] memory prevAllocs = _getPrevAllocations(op, operatorSet, slashingParams.strategies);
         Magnitudes[] memory curMagnitudes = _getMagnitudes(op, slashingParams.strategies);
@@ -450,14 +450,14 @@ abstract contract IntegrationBase is IntegrationDeployer {
 
         for (uint i = 0; i < slashingParams.strategies.length; i++) {
             IAllocationManagerTypes.Allocation memory curAlloc = curAllocs[i];
-            IAllocationManagerTypes.Allocation memory prevAlloc = prevAllocs[i];
+            IAllocationManagerTypes.Allocation memory prevAlloc = prevAllocs[i]; 
 
             uint64 slashedMagnitude = uint64(uint256(prevAlloc.currentMagnitude).mulWadRoundUp(slashingParams.wadsToSlash[i]));
-
+            
             // Check Allocations
             assertEq(
-                curAlloc.currentMagnitude,
-                prevAlloc.currentMagnitude - slashedMagnitude,
+                curAlloc.currentMagnitude, 
+                prevAlloc.currentMagnitude - slashedMagnitude, 
                 string.concat(err, " (currentMagnitude)")
             );
 
@@ -466,19 +466,19 @@ abstract contract IntegrationBase is IntegrationDeployer {
                 assertEq(curAlloc.effectBlock, 0, string.concat(err, " (effectBlock)"));
             } else {
                 assertEq(
-                    curAlloc.currentMagnitude,
-                    prevAlloc.currentMagnitude - slashedMagnitude,
+                    curAlloc.currentMagnitude, 
+                    prevAlloc.currentMagnitude - slashedMagnitude, 
                     string.concat(err, " (currentMagnitude)")
                 );
 
-                // If (isDeallocation) ...
+                // If (isDeallocation) ... 
                 if (prevAlloc.pendingDiff < 0) {
                     uint64 slashedPending =
                         uint64(uint256(uint128(-prevAlloc.pendingDiff)).mulWadRoundUp(slashingParams.wadsToSlash[i]));
-
+                    
                     assertEq(
-                        curAlloc.pendingDiff,
-                        prevAlloc.pendingDiff + int128(uint128(slashedPending)),
+                        curAlloc.pendingDiff, 
+                        prevAlloc.pendingDiff + int128(uint128(slashedPending)), 
                         string.concat(err, " (pendingDiff)")
                     );
 
@@ -486,8 +486,8 @@ abstract contract IntegrationBase is IntegrationDeployer {
                 }
 
                 assertEq(
-                    curAlloc.effectBlock,
-                    block.number + delay,
+                    curAlloc.effectBlock, 
+                    block.number + delay, 
                     string.concat(err, " (effectBlock)")
                 );
             }
@@ -497,20 +497,20 @@ abstract contract IntegrationBase is IntegrationDeployer {
             Magnitudes memory prevMagnitude = prevMagnitudes[i];
 
             assertEq(
-                curMagnitude.encumbered,
-                prevMagnitude.encumbered - slashedMagnitude,
+                curMagnitude.encumbered, 
+                prevMagnitude.encumbered - slashedMagnitude, 
                 string.concat(err, " (encumbered magnitude)")
             );
 
             assertEq(
-                curMagnitude.allocatable,
-                prevMagnitude.allocatable,
+                curMagnitude.allocatable, 
+                prevMagnitude.allocatable, 
                 string.concat(err, " (allocatable magnitude)")
             );
 
             assertEq(
-                curMagnitude.max,
-                prevMagnitude.max - slashedMagnitude,
+                curMagnitude.max, 
+                prevMagnitude.max - slashedMagnitude, 
                 string.concat(err, " (max magnitude)")
             );
         }
@@ -525,9 +525,9 @@ abstract contract IntegrationBase is IntegrationDeployer {
     ) internal view {
         for (uint i; i < allocateParams.strategies.length; ++i) {
             IStrategy strat = allocateParams.strategies[i];
-
-            uint balance = strat == BEACONCHAIN_ETH_STRAT
-                ? address(staker).balance
+            
+            uint balance = strat == BEACONCHAIN_ETH_STRAT 
+                ? address(staker).balance 
                 : strat.underlyingToken().balanceOf(address(staker));
 
             uint256 maxDelta = strat == BEACONCHAIN_ETH_STRAT ? 1 gwei : 3;
@@ -537,7 +537,7 @@ abstract contract IntegrationBase is IntegrationDeployer {
 
                 expectedBalances[i] -= expectedBalances[i]
                     .mulWadRoundUp(allocateParams.newMagnitudes[i].mulWadRoundUp(wadToSlash));
-            }
+            } 
 
             assertApproxEqAbs(expectedBalances[i], balance, maxDelta, err);
         }
@@ -572,11 +572,11 @@ abstract contract IntegrationBase is IntegrationDeployer {
                         SNAPSHOT ASSERTIONS: OPERATOR SHARES
     *******************************************************************************/
 
-    /// @dev Check that the operator has `addedShares` additional operator shares
+    /// @dev Check that the operator has `addedShares` additional operator shares 
     // for each strategy since the last snapshot
     function assert_Snap_Added_OperatorShares(
-        User operator,
-        IStrategy[] memory strategies,
+        User operator, 
+        IStrategy[] memory strategies, 
         uint[] memory addedShares,
         string memory err
     ) internal {
@@ -593,8 +593,8 @@ abstract contract IntegrationBase is IntegrationDeployer {
     /// @dev Check that the operator has `removedShares` fewer operator shares
     /// for each strategy since the last snapshot
     function assert_Snap_Removed_OperatorShares(
-        User operator,
-        IStrategy[] memory strategies,
+        User operator, 
+        IStrategy[] memory strategies, 
         uint[] memory removedShares,
         string memory err
     ) internal {
@@ -627,8 +627,8 @@ abstract contract IntegrationBase is IntegrationDeployer {
     }
 
     function assert_Snap_Delta_OperatorShares(
-        User operator,
-        IStrategy[] memory strategies,
+        User operator, 
+        IStrategy[] memory strategies, 
         int[] memory shareDeltas,
         string memory err
     ) internal {
@@ -655,8 +655,8 @@ abstract contract IntegrationBase is IntegrationDeployer {
     /// @dev Check that the staker has `addedShares` additional deposit shares
     /// for each strategy since the last snapshot
     function assert_Snap_Added_Staker_DepositShares(
-        User staker,
-        IStrategy[] memory strategies,
+        User staker, 
+        IStrategy[] memory strategies, 
         uint[] memory addedShares,
         string memory err
     ) internal {
@@ -665,14 +665,14 @@ abstract contract IntegrationBase is IntegrationDeployer {
         uint[] memory prevShares = _getPrevStakerDepositShares(staker, strategies);
 
         // For each strategy, check (prev + added == cur)
-        for (uint i = 0; i < strategies.length; i++) {
-            assertApproxEqAbs(prevShares[i] + addedShares[i], curShares[i], 1, err);
+        for (uint i = 0; i < strategies.length; i++) {        
+            assertApproxEqAbs(prevShares[i] + addedShares[i], curShares[i], 1, err);     
         }
     }
 
     function assert_Snap_Added_Staker_DepositShares(
-        User staker,
-        IStrategy strat,
+        User staker, 
+        IStrategy strat, 
         uint _addedShares,
         string memory err
     ) internal {
@@ -687,8 +687,8 @@ abstract contract IntegrationBase is IntegrationDeployer {
     /// @dev Check that the staker has `removedShares` fewer delegatable shares
     /// for each strategy since the last snapshot
     function assert_Snap_Removed_StakerDepositShares(
-        User staker,
-        IStrategy[] memory strategies,
+        User staker, 
+        IStrategy[] memory strategies, 
         uint[] memory removedShares,
         string memory err
     ) internal {
@@ -703,8 +703,8 @@ abstract contract IntegrationBase is IntegrationDeployer {
     }
 
     function assert_Snap_Removed_StakerDepositShares(
-        User staker,
-        IStrategy strat,
+        User staker, 
+        IStrategy strat, 
         uint _removedShares,
         string memory err
     ) internal {
@@ -718,8 +718,8 @@ abstract contract IntegrationBase is IntegrationDeployer {
 
     /// @dev Check that the staker's withdrawable shares have decreased by `removedShares`
     function assert_Snap_Removed_StakerWithdrawableShares(
-        User staker,
-        IStrategy[] memory strategies,
+        User staker, 
+        IStrategy[] memory strategies, 
         uint[] memory removedShares,
         string memory err
     ) internal {
@@ -734,8 +734,8 @@ abstract contract IntegrationBase is IntegrationDeployer {
     }
 
     function assert_Snap_Removed_StakerWithdrawableShares(
-        User staker,
-        IStrategy strat,
+        User staker, 
+        IStrategy strat, 
         uint _removedShares,
         string memory err
     ) internal {
@@ -798,8 +798,8 @@ abstract contract IntegrationBase is IntegrationDeployer {
     }
 
     function assert_Snap_Delta_StakerShares(
-        User staker,
-        IStrategy[] memory strategies,
+        User staker, 
+        IStrategy[] memory strategies, 
         int[] memory shareDeltas,
         string memory err
     ) internal {
@@ -860,7 +860,7 @@ abstract contract IntegrationBase is IntegrationDeployer {
                       SNAPSHOT ASSERTIONS: UNDERLYING TOKEN
     *******************************************************************************/
 
-    /// @dev Check that the staker has `addedTokens` additional underlying tokens
+    /// @dev Check that the staker has `addedTokens` additional underlying tokens 
     // since the last snapshot
     function assert_Snap_Added_TokenBalances(
         User staker,
@@ -880,7 +880,7 @@ abstract contract IntegrationBase is IntegrationDeployer {
         }
     }
 
-    /// @dev Check that the staker has `removedTokens` fewer underlying tokens
+    /// @dev Check that the staker has `removedTokens` fewer underlying tokens 
     // since the last snapshot
     function assert_Snap_Removed_TokenBalances(
         User staker,
@@ -924,7 +924,7 @@ abstract contract IntegrationBase is IntegrationDeployer {
     *******************************************************************************/
 
     function assert_Snap_Added_QueuedWithdrawals(
-        User staker,
+        User staker, 
         IDelegationManagerTypes.Withdrawal[] memory withdrawals,
         string memory err
     ) internal {
@@ -936,7 +936,7 @@ abstract contract IntegrationBase is IntegrationDeployer {
     }
 
     function assert_Snap_Added_QueuedWithdrawal(
-        User staker,
+        User staker, 
         IDelegationManagerTypes.Withdrawal memory /*withdrawal*/,
         string memory err
     ) internal {
@@ -1105,7 +1105,7 @@ abstract contract IntegrationBase is IntegrationDeployer {
     /*******************************************************************************
                                 UTILITY METHODS
     *******************************************************************************/
-
+    
     function _randWadToSlash() internal returns (uint) {
         return _randUint({ min: 0.01 ether, max: 1 ether });
     }
@@ -1123,9 +1123,9 @@ abstract contract IntegrationBase is IntegrationDeployer {
         assembly {
             mstore(strategies, len)
         }
-
+        
         wadsToSlash = new uint[](len);
-
+        
         // Randomly select a `wadToSlash` for each strategy.
         for (uint i; i < len; ++i) {
             wadsToSlash[i] = _randWadToSlash();
@@ -1133,12 +1133,12 @@ abstract contract IntegrationBase is IntegrationDeployer {
 
         return (strategies.sort(), wadsToSlash);
     }
-
+    
     function _randMagnitudes(uint64 sum, uint256 len) internal returns (uint64[] memory magnitudes) {
         magnitudes = new uint64[](len);
 
         if (sum == 0 || len == 0) return magnitudes;
-
+        
         uint64 remaining = sum;
 
         for (uint256 i; i < len; ++i) {
@@ -1152,7 +1152,7 @@ abstract contract IntegrationBase is IntegrationDeployer {
     }
 
     function _randWithdrawal(
-        IStrategy[] memory strategies,
+        IStrategy[] memory strategies, 
         uint[] memory shares
     ) internal returns (IStrategy[] memory, uint[] memory) {
         uint stratsToWithdraw = _randUint({ min: 1, max: strategies.length });
@@ -1218,7 +1218,7 @@ abstract contract IntegrationBase is IntegrationDeployer {
                     deltaGwei = int64(uint64(activeValidatorCount) * beaconChain.CONSENSUS_REWARD_AMOUNT_GWEI());
                     beaconChain.advanceEpoch_NoWithdraw();
                 }
-
+                
                 tokenDeltas[i] = int(deltaGwei) * int(GWEI_TO_WEI);
 
                 stakerShareDeltas[i] = tokenDeltas[i];
@@ -1338,7 +1338,7 @@ abstract contract IntegrationBase is IntegrationDeployer {
     }
 
     /// @dev Rolls forward by the minimum withdrawal delay blocks.
-    function _rollBlocksForCompleteWithdrawals(IDelegationManagerTypes.Withdrawal[] memory withdrawals) internal {
+    function _rollBlocksForCompleteWithdrawals(IDelegationManagerTypes.Withdrawal[] memory withdrawals) internal {     
         uint256 latest;
         for (uint i = 0; i < withdrawals.length; ++i) {
             if (withdrawals[i].startBlock > latest) latest = withdrawals[i].startBlock;
@@ -1426,7 +1426,7 @@ abstract contract IntegrationBase is IntegrationDeployer {
 
     /// @dev Uses timewarp modifier to get operator shares at the last snapshot
     function _getPrevOperatorShares(
-        User operator,
+        User operator, 
         IStrategy[] memory strategies
     ) internal timewarp() returns (uint[] memory) {
         return _getOperatorShares(operator, strategies);
@@ -1445,7 +1445,7 @@ abstract contract IntegrationBase is IntegrationDeployer {
 
     /// @dev Uses timewarp modifier to get staker shares at the last snapshot
     function _getPrevStakerDepositShares(
-        User staker,
+        User staker, 
         IStrategy[] memory strategies
     ) internal timewarp() returns (uint[] memory) {
         return _getStakerDepositShares(staker, strategies);
@@ -1488,7 +1488,7 @@ abstract contract IntegrationBase is IntegrationDeployer {
 
     /// @dev Uses timewarp modifier to get staker shares at the last snapshot
     function _getPrevStakerDepositSharesInt(
-        User staker,
+        User staker, 
         IStrategy[] memory strategies
     ) internal timewarp() returns (int[] memory) {
         return _getStakerDepositSharesInt(staker, strategies);
@@ -1517,7 +1517,7 @@ abstract contract IntegrationBase is IntegrationDeployer {
 
     function _getStakerWithdrawableShares(User staker, IStrategy[] memory strategies) internal view returns (uint[] memory) {
         (uint256[] memory withdrawableShares, ) = delegationManager.getWithdrawableShares(address(staker), strategies);
-        return withdrawableShares;
+        return withdrawableShares; 
     }
 
     /// @dev Uses timewarp modifier to get staker beacon chain scaling factor at the last snapshot
@@ -1544,7 +1544,7 @@ abstract contract IntegrationBase is IntegrationDeployer {
 
     function _getTokenBalances(User staker, IERC20[] memory tokens) internal view returns (uint[] memory) {
         uint[] memory balances = new uint[](tokens.length);
-
+        
         for (uint i = 0; i < tokens.length; i++) {
             if (tokens[i] == NATIVE_ETH) {
                 balances[i] = address(staker).balance;

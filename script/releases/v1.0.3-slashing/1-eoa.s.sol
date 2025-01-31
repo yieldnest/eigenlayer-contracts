@@ -145,7 +145,7 @@ contract Deploy is EOADeployer {
         assertTrue(rewards.MAX_RETROACTIVE_LENGTH() == Env.MAX_RETROACTIVE_LENGTH(), "rc.retroLength invalid");
         assertTrue(rewards.MAX_FUTURE_LENGTH() == Env.MAX_FUTURE_LENGTH(), "rc.futureLength invalid");
         assertTrue(rewards.GENESIS_REWARDS_TIMESTAMP() == Env.GENESIS_REWARDS_TIMESTAMP(), "rc.genesis invalid");
-
+        
         StrategyManager strategyManager = Env.impl.strategyManager();
         assertTrue(strategyManager.delegation() == Env.proxy.delegationManager(), "sm.dm invalid");
         assertTrue(strategyManager.pauserRegistry() == Env.impl.pauserRegistry(), "sm.pR invalid");
@@ -208,7 +208,7 @@ contract Deploy is EOADeployer {
             Env.GENESIS_REWARDS_TIMESTAMP()
         );
         assertGt(rewardsCoordinatorImpl.GENESIS_REWARDS_TIMESTAMP(), 0);
-    }
+    }   
 
     /// @dev Query and return `proxyAdmin.getProxyImplementation(proxy)`
     function _getProxyImpl(address proxy) internal view returns (address) {

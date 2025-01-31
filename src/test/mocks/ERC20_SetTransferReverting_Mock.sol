@@ -7,7 +7,7 @@ contract ERC20_SetTransferReverting_Mock is ERC20PresetFixedSupply {
 
     bool public transfersRevert;
 
-    constructor(uint256 initSupply, address initOwner)
+    constructor(uint256 initSupply, address initOwner) 
         ERC20PresetFixedSupply("ERC20_SetTransferReverting_Mock", "ERC20_SetTransferReverting_Mock", initSupply, initOwner)
         {}
 

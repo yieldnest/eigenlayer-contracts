@@ -25,13 +25,13 @@ contract EigenPodUnitTests is EigenLayerUnitTestSetup, EigenPodPausingConstants,
     EigenPod public eigenPod;
     EigenPod public podImplementation;
     IBeacon public eigenPodBeacon;
-
+    
     // BeaconChain Mock Setup
     TimeMachine public timeMachine;
     ETHPOSDepositMock ethPOSDepositMock;
     BeaconChainMock public beaconChain;
     EIP_4788_Oracle_Mock constant EIP_4788_ORACLE = EIP_4788_Oracle_Mock(0x000F3df6D732807Ef1319fB7B8bB8522d0Beac02);
-
+    
     uint256 public numStakers;
 
     address defaultProofSubmitter = cheats.addr(uint256(0xDEADBEEF));
@@ -78,12 +78,12 @@ contract EigenPodUnitTests is EigenLayerUnitTestSetup, EigenPodPausingConstants,
         cheats.etch(address(EIP_4788_ORACLE), type(EIP_4788_Oracle_Mock).runtimeCode);
 
         // Store the eigenPodBeacon address in the eigenPod beacon proxy
-        bytes32 beaconSlot = 0xa3f0ad74e5423aebfd80d3ef4346578335a9a72aeaee59ff6cb3582b35133d50;
+        bytes32 beaconSlot = 0xa3f0ad74e5423aebfd80d3ef4346578335a9a72aeaee59ff6cb3582b35133d50;   
         cheats.store(address(eigenPod), beaconSlot, bytes32(uint256(uint160(address(eigenPodBeacon)))));
 
         // Initialize pod
         eigenPod.initialize(address(this));
-
+        
         // Set a proof submitter
         eigenPod.setProofSubmitter(defaultProofSubmitter);
     }
@@ -123,7 +123,7 @@ contract EigenPodUnitTests is EigenLayerUnitTestSetup, EigenPodPausingConstants,
     /// @dev Opposite of Endian.fromLittleEndianUint64
     function _toLittleEndianUint64(uint64 num) internal pure returns (bytes32) {
         uint256 lenum;
-
+        
         // Rearrange the bytes from big-endian to little-endian format
         lenum |= uint256((num & 0xFF) << 56);
         lenum |= uint256((num & 0xFF00) << 40);
@@ -133,7 +133,7 @@ contract EigenPodUnitTests is EigenLayerUnitTestSetup, EigenPodPausingConstants,
         lenum |= uint256((num & 0xFF0000000000) >> 24);
         lenum |= uint256((num & 0xFF000000000000) >> 40);
         lenum |= uint256((num & 0xFF00000000000000) >> 56);
-
+    
         // Shift the little-endian bytes to the end of the bytes32 value
         return bytes32(lenum << 192);
     }
@@ -389,7 +389,7 @@ contract EigenPodUnitTests_EPMFunctions is EigenPodUnitTests {
     /*******************************************************************************
                             stake() tests
     *******************************************************************************/
-
+    
     // Beacon chain staking constnats
     bytes public constant pubkey =
         hex"88347ed1c492eedc97fc8c506a35d44d81f27a0c7a1c661b35913cfd15256c0cccbd34a83341f505c7de2983292f2cab";
@@ -500,12 +500,12 @@ contract EigenPodUnitTests_EPMFunctions is EigenPodUnitTests {
 
         assertEq(address(recipient).balance, randAmountWei, "recipient should have received withdrawn balance");
         assertEq(
-            address(pod).balance,
+            address(pod).balance, 
             uint(withdrawableRestakedExecutionLayerGwei * 1 gwei) - randAmountWei,
             "pod balance should have decreased by withdrawn eth"
         );
         assertEq(
-            pod.withdrawableRestakedExecutionLayerGwei(),
+            pod.withdrawableRestakedExecutionLayerGwei(), 
             withdrawableRestakedExecutionLayerGwei - uint64(randAmountWei / 1 gwei),
             "withdrawableRestakedExecutionLayerGwei should have decreased by amount withdrawn"
         );
@@ -538,12 +538,12 @@ contract EigenPodUnitTests_EPMFunctions is EigenPodUnitTests {
 
         assertEq(address(recipient).balance, randAmountWeiAdjusted, "recipient should have received withdrawn balance");
         assertEq(
-            address(pod).balance,
+            address(pod).balance, 
             uint(withdrawableRestakedExecutionLayerGwei * 1 gwei) - randAmountWeiAdjusted,
             "pod balance should have decreased by withdrawn eth"
         );
         assertEq(
-            pod.withdrawableRestakedExecutionLayerGwei(),
+            pod.withdrawableRestakedExecutionLayerGwei(), 
             withdrawableRestakedExecutionLayerGwei - uint64(randAmountWeiAdjusted / 1 gwei),
             "withdrawableRestakedExecutionLayerGwei should have decreased by amount withdrawn"
         );
@@ -551,11 +551,11 @@ contract EigenPodUnitTests_EPMFunctions is EigenPodUnitTests {
 }
 
 contract EigenPodUnitTests_recoverTokens is EigenPodUnitTests {
-
+    
     /*******************************************************************************
                             recoverTokens() tests
     *******************************************************************************/
-
+    
     function testFuzz_recoverTokens_revert_notPodOwner(address invalidCaller) public {
         (EigenPodUser staker,) = _newEigenPodStaker({ rand: 0 });
         EigenPod pod = staker.pod();
@@ -566,12 +566,12 @@ contract EigenPodUnitTests_recoverTokens is EigenPodUnitTests {
         tokens[0] = IERC20(address(0x123));
         uint256[] memory amounts = new uint256[](1);
         amounts[0] = 1;
-
+        
         cheats.prank(invalidCaller);
         cheats.expectRevert(IEigenPodErrors.OnlyEigenPodOwner.selector);
         pod.recoverTokens(tokens, amounts, podOwner);
     }
-
+    
     function test_recoverTokens_revert_whenPaused() public {
         (EigenPodUser staker,) = _newEigenPodStaker({ rand: 0 });
         EigenPod pod = staker.pod();
@@ -581,7 +581,7 @@ contract EigenPodUnitTests_recoverTokens is EigenPodUnitTests {
         tokens[0] = IERC20(address(0x123));
         uint256[] memory amounts = new uint256[](1);
         amounts[0] = 1;
-
+        
         // pause recoverTokens
         cheats.prank(pauser);
         eigenPodManagerMock.pause(1 << PAUSED_NON_PROOF_WITHDRAWALS);
@@ -802,7 +802,7 @@ contract EigenPodUnitTests_verifyWithdrawalCredentials is EigenPodUnitTests, Pro
     function testFuzz_revert_validatorsExited(uint256 rand) public {
         (EigenPodUser staker,) = _newEigenPodStaker({ rand: rand });
         (uint40[] memory validators,) = staker.startValidators();
-
+        
         // Exit validators from beacon chain and withdraw to pod
         staker.exitValidators(validators);
         beaconChain.advanceEpoch();
@@ -867,8 +867,8 @@ contract EigenPodUnitTests_verifyWithdrawalCredentials is EigenPodUnitTests, Pro
         (uint40[] memory validators, ) = staker.startValidators();
         EigenPod pod = staker.pod();
         CredentialProofs memory proofs = beaconChain.getCredentialProofs(validators);
-
-        proofs.validatorFields[0][BeaconChainProofs.VALIDATOR_ACTIVATION_EPOCH_INDEX]
+        
+        proofs.validatorFields[0][BeaconChainProofs.VALIDATOR_ACTIVATION_EPOCH_INDEX] 
             = _toLittleEndianUint64(BeaconChainProofs.FAR_FUTURE_EPOCH);
 
         cheats.startPrank(address(staker));
@@ -1083,7 +1083,7 @@ contract EigenPodUnitTests_startCheckpoint is EigenPodUnitTests {
 }
 
 contract EigenPodUnitTests_verifyCheckpointProofs is EigenPodUnitTests {
-
+    
     /*******************************************************************************
                             verifyCheckpointProofs() tests
     *******************************************************************************/
@@ -1732,7 +1732,7 @@ contract EigenPodHarnessSetup is EigenPodUnitTests {
         // Upgrade eigenPod to harness
         UpgradeableBeacon(address(eigenPodBeacon)).upgradeTo(address(eigenPodHarnessImplementation));
         eigenPodHarness = EigenPodHarness(payable(eigenPod));
-    }
+    }    
 }
 
 /// @notice No unit tests as of now but would be good to add specific unit tests using proofs from our proofGen library

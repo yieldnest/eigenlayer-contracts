@@ -54,12 +54,12 @@ abstract contract SignatureUtils is ISignatureUtils {
     /// @dev Helper for calculating the contract's domain separator.
     function _calculateDomainSeparator() internal view returns (bytes32) {
         /// forgefmt: disable-next-item
-        return
+        return 
             keccak256(
                 abi.encode(
-                    EIP712_DOMAIN_TYPEHASH,
-                    keccak256(bytes("EigenLayer")),
-                    block.chainid,
+                    EIP712_DOMAIN_TYPEHASH, 
+                    keccak256(bytes("EigenLayer")), 
+                    block.chainid, 
                     address(this)
                 )
             );

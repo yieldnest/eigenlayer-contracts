@@ -79,7 +79,7 @@ contract Deploy is EOADeployer {
         assertTrue(allocationManager.permissionController() == Env.proxy.permissionController(), "alm.pc invalid");
         assertTrue(allocationManager.DEALLOCATION_DELAY() == Env.MIN_WITHDRAWAL_DELAY(), "alm.deallocDelay invalid");
         assertTrue(allocationManager.ALLOCATION_CONFIGURATION_DELAY() == Env.ALLOCATION_CONFIGURATION_DELAY(), "alm.configDelay invalid");
-
+        
 
         DelegationManager delegation = Env.impl.delegationManager();
         assertTrue(delegation.strategyManager() == Env.proxy.strategyManager(), "dm.sm invalid");

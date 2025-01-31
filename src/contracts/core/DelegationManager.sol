@@ -354,8 +354,8 @@ contract DelegationManager is
         for (uint256 i = 0; i < strategies.length; ++i) {
             // forgefmt: disable-next-item
             _increaseDelegation({
-                operator: operator,
-                staker: staker,
+                operator: operator, 
+                staker: staker, 
                 strategy: strategies[i],
                 prevDepositShares: uint256(0),
                 addedShares: depositedShares[i],
@@ -1003,11 +1003,11 @@ contract DelegationManager is
         return _calculateSignableDigest(
             keccak256(
                 abi.encode(
-                    DELEGATION_APPROVAL_TYPEHASH,
-                    approver,
-                    staker,
-                    operator,
-                    approverSalt,
+                    DELEGATION_APPROVAL_TYPEHASH, 
+                    approver, 
+                    staker, 
+                    operator, 
+                    approverSalt, 
                     expiry
                 )
             )

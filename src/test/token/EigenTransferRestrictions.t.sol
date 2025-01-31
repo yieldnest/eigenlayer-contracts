@@ -39,7 +39,7 @@ contract EigenTransferRestrictionsTest is Test {
         vm.startPrank(minter1);
         proxyAdmin = new ProxyAdmin();
         // initialize with dummy BackingEigen address
-
+        
         eigenImpl = new EigenHarness(new ERC20PresetFixedSupply({
             name: "bEIGEN",
             symbol: "bEIGEN",
@@ -105,7 +105,7 @@ contract EigenTransferRestrictionsTest is Test {
         // send other tokens from minter1
         vm.startPrank(minter1);
         eigen.transfer(from, eigen.balanceOf(minter1) / 2);
-
+        
         // sending from other will revert
         vm.startPrank(from);
         uint256 fromBalance = eigen.balanceOf(from);
