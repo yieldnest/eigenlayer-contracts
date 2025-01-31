@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.27;
 
-import "@openzeppelin-upgrades-v4.9.0/contracts/proxy/utils/Initializable.sol";
-import "@openzeppelin-upgrades-v4.9.0/contracts/access/OwnableUpgradeable.sol";
-import "@openzeppelin-upgrades-v4.9.0/contracts/security/ReentrancyGuardUpgradeable.sol";
-import "@openzeppelin-v4.9.0/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin-upgrades/contracts/proxy/utils/Initializable.sol";
+import "@openzeppelin-upgrades/contracts/access/OwnableUpgradeable.sol";
+import "@openzeppelin-upgrades/contracts/security/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "../mixins/SignatureUtils.sol";
 import "../interfaces/IEigenPodManager.sol";
@@ -365,12 +365,12 @@ contract StrategyManager is
         return _calculateSignableDigest(
             keccak256(
                 abi.encode(
-                    DEPOSIT_TYPEHASH,
-                    staker,
-                    strategy,
-                    token,
-                    amount,
-                    nonce,
+                    DEPOSIT_TYPEHASH, 
+                    staker, 
+                    strategy, 
+                    token, 
+                    amount, 
+                    nonce, 
                     expiry
                 )
             )

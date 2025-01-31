@@ -4,8 +4,8 @@ pragma solidity ^0.8.12;
 import "../Env.sol";
 import {Queue} from "./2-multisig.s.sol";
 
-import "@openzeppelin-v4.9.0/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-import "@openzeppelin-v4.9.0/contracts/proxy/transparent/ProxyAdmin.sol";
+import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
 contract Execute is Queue {
     using Env for *;

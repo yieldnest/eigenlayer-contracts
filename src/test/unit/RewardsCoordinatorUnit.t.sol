@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.27;
 
-import "@openzeppelin-v4.9.0/contracts/mocks/ERC1271WalletMock.sol";
-import "@openzeppelin-v4.9.0/contracts/token/ERC20/presets/ERC20PresetFixedSupply.sol";
+import "@openzeppelin/contracts/mocks/ERC1271WalletMock.sol";
+import "@openzeppelin/contracts/token/ERC20/presets/ERC20PresetFixedSupply.sol";
 
 import "src/contracts/core/RewardsCoordinator.sol";
 import "src/contracts/strategies/StrategyBase.sol";
@@ -323,9 +323,9 @@ contract RewardsCoordinatorUnitTests_initializeAndSetters is RewardsCoordinatorU
         // Initialize UAM
         cheats.prank(avs);
         permissionController.setAppointee(
-            avs,
-            defaultAppointee,
-            address(rewardsCoordinator),
+            avs, 
+            defaultAppointee, 
+            address(rewardsCoordinator), 
             bytes4(keccak256("setClaimerFor(address,address)"))
         );
 
@@ -349,9 +349,9 @@ contract RewardsCoordinatorUnitTests_initializeAndSetters is RewardsCoordinatorU
         // Initialize UAM
         cheats.prank(operator);
         permissionController.setAppointee(
-            operator,
-            defaultAppointee,
-            address(rewardsCoordinator),
+            operator, 
+            defaultAppointee, 
+            address(rewardsCoordinator), 
             bytes4(keccak256("setClaimerFor(address,address)"))
         );
 
@@ -504,9 +504,9 @@ contract RewardsCoordinatorUnitTests_setOperatorAVSSplit is RewardsCoordinatorUn
         // Set UAM
         cheats.prank(operator);
         permissionController.setAppointee(
-            operator,
-            defaultAppointee,
-            address(rewardsCoordinator),
+            operator, 
+            defaultAppointee, 
+            address(rewardsCoordinator), 
             IRewardsCoordinator.setOperatorAVSSplit.selector
         );
 
@@ -668,9 +668,9 @@ contract RewardsCoordinatorUnitTests_setOperatorPISplit is RewardsCoordinatorUni
         // Set UAM
         cheats.prank(operator);
         permissionController.setAppointee(
-            operator,
-            defaultAppointee,
-            address(rewardsCoordinator),
+            operator, 
+            defaultAppointee, 
+            address(rewardsCoordinator), 
             IRewardsCoordinator.setOperatorPISplit.selector
         );
 

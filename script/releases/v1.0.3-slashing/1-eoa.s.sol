@@ -4,10 +4,10 @@ pragma solidity ^0.8.12;
 import {EOADeployer} from "zeus-templates/templates/EOADeployer.sol";
 import "../Env.sol";
 
-import "@openzeppelin-v4.9.0/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-import "@openzeppelin-v4.9.0/contracts/proxy/transparent/ProxyAdmin.sol";
-import "@openzeppelin-v4.9.0/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin-v4.9.0/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 // Just upgrade StrategyManager
 contract Deploy is EOADeployer {
@@ -145,7 +145,7 @@ contract Deploy is EOADeployer {
         assertTrue(rewards.MAX_RETROACTIVE_LENGTH() == Env.MAX_RETROACTIVE_LENGTH(), "rc.retroLength invalid");
         assertTrue(rewards.MAX_FUTURE_LENGTH() == Env.MAX_FUTURE_LENGTH(), "rc.futureLength invalid");
         assertTrue(rewards.GENESIS_REWARDS_TIMESTAMP() == Env.GENESIS_REWARDS_TIMESTAMP(), "rc.genesis invalid");
-
+        
         StrategyManager strategyManager = Env.impl.strategyManager();
         assertTrue(strategyManager.delegation() == Env.proxy.delegationManager(), "sm.dm invalid");
         assertTrue(strategyManager.pauserRegistry() == Env.impl.pauserRegistry(), "sm.pR invalid");
@@ -208,7 +208,7 @@ contract Deploy is EOADeployer {
             Env.GENESIS_REWARDS_TIMESTAMP()
         );
         assertGt(rewardsCoordinatorImpl.GENESIS_REWARDS_TIMESTAMP(), 0);
-    }
+    }   
 
     /// @dev Query and return `proxyAdmin.getProxyImplementation(proxy)`
     function _getProxyImpl(address proxy) internal view returns (address) {

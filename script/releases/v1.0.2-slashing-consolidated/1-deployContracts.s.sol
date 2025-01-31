@@ -4,13 +4,13 @@ pragma solidity ^0.8.12;
 import {EOADeployer} from "zeus-templates/templates/EOADeployer.sol";
 import "../Env.sol";
 
-import "@openzeppelin-v4.9.0/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-import "@openzeppelin-v4.9.0/contracts/proxy/transparent/ProxyAdmin.sol";
-import "@openzeppelin-v4.9.0/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin-v4.9.0/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 /**
- * Purpose: use an EOA to deploy all of the new contracts for this upgrade.
+ * Purpose: use an EOA to deploy all of the new contracts for this upgrade. 
  */
 contract Deploy is EOADeployer {
     using Env for *;
@@ -178,7 +178,7 @@ contract Deploy is EOADeployer {
         vm.stopBroadcast();
     }
 
-    function testScript() public virtual {
+    function testScript() public virtual {       
         _runAsEOA();
 
         _validateNewImplAddresses({ areMatching: false });
@@ -222,7 +222,7 @@ contract Deploy is EOADeployer {
             address(Env.impl.strategyManager()),
             "strategyManager impl failed"
         );
-
+        
         /// permissions/ -- can't check these because PauserRegistry has no proxy, and
         /// PermissionController proxy didn't exist before this deploy
 
@@ -298,7 +298,7 @@ contract Deploy is EOADeployer {
             _getProxyAdmin(address(Env.proxy.strategyManager())) == pa,
             "strategyManager proxyAdmin incorrect"
         );
-
+        
         /// permissions/ -- can't check these because PauserRegistry has no proxy, and
         /// PermissionController proxy didn't exist before this deploy
 
@@ -353,7 +353,7 @@ contract Deploy is EOADeployer {
 
             /// PermissionController has no initial storage
         }
-
+        
         {
             /// core/
 
@@ -363,7 +363,7 @@ contract Deploy is EOADeployer {
             assertTrue(allocationManager.permissionController() == Env.proxy.permissionController(), "alm.pc invalid");
             assertTrue(allocationManager.DEALLOCATION_DELAY() == Env.MIN_WITHDRAWAL_DELAY(), "alm.deallocDelay invalid");
             assertTrue(allocationManager.ALLOCATION_CONFIGURATION_DELAY() == Env.ALLOCATION_CONFIGURATION_DELAY(), "alm.configDelay invalid");
-
+            
             AVSDirectory avsDirectory = Env.impl.avsDirectory();
             assertTrue(avsDirectory.delegation() == Env.proxy.delegationManager(), "avsD.dm invalid");
             assertTrue(avsDirectory.pauserRegistry() == Env.impl.pauserRegistry(), "avsD.pR invalid");
@@ -387,7 +387,7 @@ contract Deploy is EOADeployer {
             assertTrue(rewards.MAX_RETROACTIVE_LENGTH() == Env.MAX_RETROACTIVE_LENGTH(), "rc.retroLength invalid");
             assertTrue(rewards.MAX_FUTURE_LENGTH() == Env.MAX_FUTURE_LENGTH(), "rc.futureLength invalid");
             assertTrue(rewards.GENESIS_REWARDS_TIMESTAMP() == Env.GENESIS_REWARDS_TIMESTAMP(), "rc.genesis invalid");
-
+            
             StrategyManager strategyManager = Env.impl.strategyManager();
             assertTrue(strategyManager.delegation() == Env.proxy.delegationManager(), "sm.dm invalid");
             assertTrue(strategyManager.pauserRegistry() == Env.impl.pauserRegistry(), "sm.pR invalid");
@@ -433,14 +433,14 @@ contract Deploy is EOADeployer {
 
         /// permissions/
         // PermissionController is initializable, but does not expose the `initialize` method
-
+        
         {
             /// core/
 
             AllocationManager allocationManager = Env.impl.allocationManager();
             vm.expectRevert(errInit);
             allocationManager.initialize(address(0), 0);
-
+            
             AVSDirectory avsDirectory = Env.impl.avsDirectory();
             vm.expectRevert(errInit);
             avsDirectory.initialize(address(0), 0);
@@ -495,7 +495,7 @@ contract Deploy is EOADeployer {
         uint count = Env.instance.strategyBaseTVLLimits_Count();
         for (uint i = 0; i < count; i++) {
             StrategyBaseTVLLimits strategy = Env.instance.strategyBaseTVLLimits(i);
-
+            
             // emit log_named_uint("strategy", i);
             // IERC20Metadata underlying = IERC20Metadata(address(strategy.underlyingToken()));
             // emit log_named_string("- name", underlying.name());

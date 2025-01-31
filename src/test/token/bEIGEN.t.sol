@@ -3,8 +3,8 @@ pragma solidity ^0.8.27;
 
 import "forge-std/Test.sol";
 
-import "@openzeppelin-v4.9.0/contracts/proxy/transparent/ProxyAdmin.sol";
-import "@openzeppelin-v4.9.0/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
+import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "../harnesses/EigenHarness.sol";
 
 import "../../contracts/token/BackingEigen.sol";
@@ -47,7 +47,7 @@ contract bEIGENTest is Test {
 
     function test_Initialize() public {
         bEIGEN.initialize(initialOwner);
-
+        
         // check that the owner is initialOwner
         assertEq(bEIGEN.owner(), initialOwner);
         // check the transfer restrictions are disabled after one year in the future
@@ -58,7 +58,7 @@ contract bEIGENTest is Test {
         StdCheats.deal(address(eigen), address(this), eigenSupply);
 
         bEIGEN.initialize(initialOwner);
-
+        
         // check that the total supply of bEIGEN is equal to the total supply of EIGEN
         assertEq(bEIGEN.totalSupply(), eigen.totalSupply());
         assertEq(bEIGEN.balanceOf(address(eigen)), bEIGEN.totalSupply());

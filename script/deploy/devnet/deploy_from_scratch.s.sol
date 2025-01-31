@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.27;
 
-import "@openzeppelin-v4.9.0/contracts/token/ERC20/presets/ERC20PresetFixedSupply.sol";
-import "@openzeppelin-v4.9.0/contracts/proxy/transparent/ProxyAdmin.sol";
-import "@openzeppelin-v4.9.0/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-import "@openzeppelin-v4.9.0/contracts/proxy/beacon/UpgradeableBeacon.sol";
+import "@openzeppelin/contracts/token/ERC20/presets/ERC20PresetFixedSupply.sol";
+import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
+import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
 
 import "../../../src/contracts/interfaces/IETHPOSDeposit.sol";
 
@@ -348,7 +348,7 @@ contract DeployFromScratch is Script, Test {
         // Deploy a WETH strategy
         strategyFactory.deployNewStrategy(IERC20(address(0x94373a4919B3240D86eA41593D5eBa789FEF3848)));
 
-        // Transfer ownership
+        // Transfer ownership 
         eigenLayerProxyAdmin.transferOwnership(executorMultisig);
         eigenPodBeacon.transferOwnership(executorMultisig);
 
@@ -493,11 +493,11 @@ contract DeployFromScratch is Script, Test {
         );
 
         require(
-            rewardsCoordinatorContract.delegationManager() == delegation,
+            rewardsCoordinatorContract.delegationManager() == delegation, 
             "rewardsCoordinator: delegation address not set correctly"
         );
         require(
-            rewardsCoordinatorContract.strategyManager() == strategyManager,
+            rewardsCoordinatorContract.strategyManager() == strategyManager, 
             "rewardsCoordinator: strategyManager address not set correctly"
         );
         require(

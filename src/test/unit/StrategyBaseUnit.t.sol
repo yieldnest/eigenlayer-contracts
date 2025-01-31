@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.27;
 
-import "@openzeppelin-v4.9.0/contracts/token/ERC20/presets/ERC20PresetFixedSupply.sol";
-import "@openzeppelin-v4.9.0/contracts/proxy/transparent/ProxyAdmin.sol";
-import "@openzeppelin-v4.9.0/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import "@openzeppelin/contracts/token/ERC20/presets/ERC20PresetFixedSupply.sol";
+import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
+import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
 import "../../contracts/strategies/StrategyBase.sol";
 import "../../contracts/permissions/PauserRegistry.sol";
@@ -35,7 +35,7 @@ contract StrategyBaseUnitTests is Test {
      * incurring reasonably small losses to depositors
      */
     uint256 internal constant SHARES_OFFSET = 1e3;
-    /**
+    /** 
      * @notice virtual balance used as part of the mitigation of the common 'share inflation' attack vector
      * Constant value chosen to reasonably reduce attempted share inflation by the first depositor, while still
      * incurring reasonably small losses to depositors
@@ -50,7 +50,7 @@ contract StrategyBaseUnitTests is Test {
         address[] memory pausers = new address[](1);
         pausers[0] = pauser;
         pauserRegistry = new PauserRegistry(pausers, unpauser);
-
+        
         strategyManager = IStrategyManager(address(new StrategyManagerMock(IDelegationManager(address(0)))));
 
         underlyingToken = new ERC20PresetFixedSupply("Test Token", "TEST", initialSupply, initialOwner);
