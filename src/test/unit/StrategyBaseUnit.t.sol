@@ -35,7 +35,7 @@ contract StrategyBaseUnitTests is Test {
      * incurring reasonably small losses to depositors
      */
     uint256 internal constant SHARES_OFFSET = 1e3;
-    /**
+    /** 
      * @notice virtual balance used as part of the mitigation of the common 'share inflation' attack vector
      * Constant value chosen to reasonably reduce attempted share inflation by the first depositor, while still
      * incurring reasonably small losses to depositors
@@ -50,7 +50,7 @@ contract StrategyBaseUnitTests is Test {
         address[] memory pausers = new address[](1);
         pausers[0] = pauser;
         pauserRegistry = new PauserRegistry(pausers, unpauser);
-
+        
         strategyManager = IStrategyManager(address(new StrategyManagerMock(IDelegationManager(address(0)))));
 
         underlyingToken = new ERC20PresetFixedSupply("Test Token", "TEST", initialSupply, initialOwner);

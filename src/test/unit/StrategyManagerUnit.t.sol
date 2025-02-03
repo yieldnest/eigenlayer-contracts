@@ -517,13 +517,13 @@ contract StrategyManagerUnitTests_depositIntoStrategy is StrategyManagerUnitTest
     //     cheats.prank(attacker);
     //     weth.transfer(address(wethStrat),1 ether);
 
-    //     //user deposits 2 eth into strategy - only gets 1 share due to rounding
+    //     //user deposits 2 eth into strategy - only gets 1 share due to rounding 
     //     cheats.startPrank(user);
     //     weth.approve(address(_strategyManager), type(uint256).max);
     //     _strategyManager.depositIntoStrategy(wethStrat, weth, 2 ether);
     //     cheats.stopPrank();
 
-    //     //attacker deposited 1 ether and 1 wei - received 1 share
+    //     //attacker deposited 1 ether and 1 wei - received 1 share 
     //     //user deposited 2 ether - received X shares
     //     //user has lost 0.5 ether?
     //     (, uint256[] memory shares) = _strategyManager.getDeposits(attacker);

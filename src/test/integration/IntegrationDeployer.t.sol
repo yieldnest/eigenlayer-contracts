@@ -363,7 +363,7 @@ abstract contract IntegrationDeployer is ExistingDeploymentParser {
         baseStrategyImplementation = new StrategyBase(strategyManager, eigenLayerPauserReg);
 
         // Third, upgrade the proxy contracts to point to the implementations
-
+        
         // Initialize the newly deployed contracts
         eigenLayerProxyAdmin.upgradeAndCall(
             ITransparentUpgradeableProxy(payable(address(allocationManager))),
@@ -391,7 +391,7 @@ abstract contract IntegrationDeployer is ExistingDeploymentParser {
         eigenLayerProxyAdmin.upgrade(
             ITransparentUpgradeableProxy(payable(address(rewardsCoordinator))), address(rewardsCoordinatorImplementation)
         );
-        // AVSDirectory
+        // AVSDirectory 
         eigenLayerProxyAdmin.upgrade(
             ITransparentUpgradeableProxy(payable(address(avsDirectory))), address(avsDirectoryImplementation)
         );
@@ -561,7 +561,7 @@ abstract contract IntegrationDeployer is ExistingDeploymentParser {
         // Using uint24 for the seed type so that if a test fails, it's easier
         // to manually use the seed to replay the same test.
         random = _hash(_randomSeed);
-
+        
         // Convert flag bitmaps to bytes of set bits for easy use with _randUint
         assetTypes = _bitmapToBytes(_assetTypes);
         userTypes = _bitmapToBytes(_userTypes);
@@ -907,17 +907,17 @@ abstract contract IntegrationDeployer is ExistingDeploymentParser {
         return userType;
     }
 
-    function _shuffle(IStrategy[] memory strats) internal returns (IStrategy[] memory) {
+    function _shuffle(IStrategy[] memory strats) internal returns (IStrategy[] memory) {        
         // Fisher-Yates shuffle algorithm
         for (uint i = strats.length - 1; i > 0; i--)  {
             uint randomIndex = _randUint({ min: 0, max: i });
-
+            
             // Swap elements
             IStrategy temp = strats[i];
             strats[i] = strats[randomIndex];
             strats[randomIndex] = temp;
         }
-
+        
         return strats;
     }
 
@@ -925,7 +925,7 @@ abstract contract IntegrationDeployer is ExistingDeploymentParser {
         uint numOpSets = _randUint({ min: 1, max: 5 });
 
         strategies = new IStrategy[][](numOpSets);
-
+        
         for (uint i; i < numOpSets; ++i) {
             IStrategy[] memory randomStrategies = _shuffle(allStrats);
 

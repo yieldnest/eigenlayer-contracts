@@ -348,7 +348,7 @@ contract DeployFromScratch is Script, Test {
         // Deploy a WETH strategy
         strategyFactory.deployNewStrategy(IERC20(address(0x94373a4919B3240D86eA41593D5eBa789FEF3848)));
 
-        // Transfer ownership
+        // Transfer ownership 
         eigenLayerProxyAdmin.transferOwnership(executorMultisig);
         eigenPodBeacon.transferOwnership(executorMultisig);
 
@@ -493,11 +493,11 @@ contract DeployFromScratch is Script, Test {
         );
 
         require(
-            rewardsCoordinatorContract.delegationManager() == delegation,
+            rewardsCoordinatorContract.delegationManager() == delegation, 
             "rewardsCoordinator: delegation address not set correctly"
         );
         require(
-            rewardsCoordinatorContract.strategyManager() == strategyManager,
+            rewardsCoordinatorContract.strategyManager() == strategyManager, 
             "rewardsCoordinator: strategyManager address not set correctly"
         );
         require(

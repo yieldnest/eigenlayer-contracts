@@ -455,7 +455,7 @@ contract AllocationManager is
         bool isOperatorSlashable
     ) internal view returns (bool) {
         /// forgefmt: disable-next-item
-        return
+        return 
             // If the operator set does not use this strategy, any allocation from it is not slashable
             _operatorSetStrategies[operatorSet.key()].contains(address(strategy)) &&
             // If the operator is not slashable by the operatorSet, any allocation is not slashable
