@@ -8,7 +8,7 @@ import {ExecuteUpgradeAndSetTimestampSubmitter} from "./5-executeUpgradeAndSetTi
 import {QueueUnpause} from "./3-queueUnpause.s.sol";
 import {QueueUpgradeAndTimestampSetter} from "./2-queueUpgradeAndTimestampSetter.s.sol";
 import {Pause} from "./4-pause.s.sol";
-import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
+import {TimelockController} from "@openzeppelin-v4.9.0/contracts/governance/TimelockController.sol";
 
 /**
  * Purpose: Propose a transaction to set the proof timestamp
