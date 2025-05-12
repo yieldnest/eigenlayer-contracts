@@ -10,7 +10,7 @@ import "forge-std/console.sol";
 import {MultisigBuilder} from "zeus-templates/templates/MultisigBuilder.sol";
 import "zeus-templates/utils/Encode.sol";
 
-import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
+import {TimelockController} from "@openzeppelin-v4.9.0/contracts/governance/TimelockController.sol";
 
 /**
  * Purpose: Executes the upgrade from step 2, which

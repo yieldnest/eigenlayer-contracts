@@ -7,7 +7,7 @@ import {ExecuteUpgradeAndSetTimestampSubmitter} from "./5-executeUpgradeAndSetTi
 import {QueueUnpause} from "./3-queueUnpause.s.sol";
 import {QueueUpgradeAndTimestampSetter} from "./2-queueUpgradeAndTimestampSetter.s.sol";
 import {Pause} from "./4-pause.s.sol";
-import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
+import {TimelockController} from "@openzeppelin-v4.9.0/contracts/governance/TimelockController.sol";
 import {SetProofTimestamp} from "./7-setProofTimestamp.s.sol";
 /**
  * Purpose: Executes the unpause transaction from step 3
